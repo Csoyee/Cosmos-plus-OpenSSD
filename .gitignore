@@ -1,0 +1,14 @@
+xsdk_workspace/.metadata
+xsdk_workspace/greedyFTL_bsp
+xsdk_workspace/OpenSSD2-8C8W-Prebuild-3.0.0_hw_platform_0
+xsdk_workspace/RemoteSystemsTempFiles
+xsdk_workspace/SDK.log
+
+xsdk_workspace/greedyFTL/Debug
+xsdk_workspace/greedyFTL/Release
+xsdk_workspace/greedyFTL/.cproject
+xsdk_workspace/greedyFTL/.project
+
+*.o
+*.mk
+
