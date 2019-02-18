@@ -158,6 +158,22 @@ void ReqTransNvmeToSlice(unsigned int cmdSlotTag, unsigned int startLba, unsigne
 }
 
 
+void DataShare (unsigned int originReqSlotTag) {
+	/*
+	 * TODO , REQ_TYPE_NAND로 만들어서 LowLevelReqQ 로 내림
+	 *
+	 * reqType = REQ_TYPE_NAND;
+	 * reqCode = SHARE;
+	 * nvmeCmdSlotTag = reqPoolPtr->reqPool[originReqSlotTag].nvmeCmdSlotTag;
+	 * logicalSliceAddr ?
+	 * reqOpt.dataBufFormat (no need)
+	 * reqOpt.nandAddr REQ_OPT_NAND_ADDR_VSA;
+	 * ...
+	 * nandInfo.virtualSliceAddr = logicalSliceMapPtr에서 vsa 받아옴.
+	 *
+	 * SelectLowLevelReqQ(reqSlotTag);
+	 */
+}
 
 void EvictDataBufEntry(unsigned int originReqSlotTag)
 {
@@ -228,6 +244,12 @@ void ReqTransSliceToLowLevel()
 		reqSlotTag = GetFromSliceReqQ();
 		if(reqSlotTag == REQ_SLOT_TAG_FAIL)
 			return ;
+		/*
+		 * TODO, SHARE command 에 대한 로직 추가
+		 *
+		 * - 아직 physical mapping 안 되어있고 buffer에 있을 때는 어떻게 할지?
+		 * - buffer에 없을 때에는 DataReadFromNand, EvictDataBufEntry 같은 함수 만들어서 low level request queue로 request 전달
+		 */
 
 		//allocate a data buffer entry for this request
 		dataBufEntry = CheckDataBufHit(reqSlotTag);
@@ -406,7 +428,7 @@ unsigned int UpdateRowAddrDepTableForBufBlockedReq(unsigned int reqSlotTag)
 void SelectLowLevelReqQ(unsigned int reqSlotTag)
 {
 	unsigned int dieNo, chNo, wayNo, bufDepCheckReport, rowAddrDepCheckReport, rowAddrDepTableUpdateReport;
-
+	// TODO: NAND request 까지 내려가는 과정에서 request list 정보 (prevreq, nextreq)랑 queuetype만 바뀌므로 크게 수정할 필요 없음. [physical address 변환 과정은 제거해도 됨.]
 	bufDepCheckReport = CheckBufDep(reqSlotTag);
 	if(bufDepCheckReport == BUF_DEPENDENCY_REPORT_PASS)
 	{

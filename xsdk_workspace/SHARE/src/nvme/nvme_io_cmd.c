@@ -61,6 +61,20 @@
 #include "../ftl_config.h"
 #include "../request_transform.h"
 
+void handle_nvme_io_share(unsigned int cmdSlotTag, NVME_IO_COMMAND *nvmeIOCmd)
+{
+	/*
+	 * TODO : share command handling 함수 구현
+	 * - LBA1, LBA2 get
+	 * - length 있으면 get
+	 * - Slice 단위로 변경 (이 때 ReqTransNvmeToSlice 함수는 1개의 lba 전송 - 수정 필요)
+	 *
+	 * [assert 조건]
+	 * - (LBA1 + length 와 LBA2) or (LBA2 + length 와 LBA1) 이 겹침
+	 *
+	 */
+}
+
 void handle_nvme_io_read(unsigned int cmdSlotTag, NVME_IO_COMMAND *nvmeIOCmd)
 {
 	IO_READ_COMMAND_DW12 readInfo12;
@@ -122,7 +136,7 @@ void handle_nvme_io_cmd(NVME_COMMAND *nvmeCmd)
 	nvmeIOCmd = (NVME_IO_COMMAND*)nvmeCmd->cmdDword;
 	opc = (unsigned int)nvmeIOCmd->OPC;
 
-	switch(opc)
+	switch(opc) // TODO : SHARE command 처리하는 로직 추가
 	{
 		case IO_NVM_FLUSH:
 		{
