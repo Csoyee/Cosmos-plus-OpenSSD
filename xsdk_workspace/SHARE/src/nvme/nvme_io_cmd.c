@@ -61,6 +61,7 @@
 #include "../ftl_config.h"
 #include "../request_transform.h"
 
+// SY Add
 void handle_nvme_io_share(unsigned int cmdSlotTag, NVME_IO_COMMAND *nvmeIOCmd)
 {
 	/*
@@ -73,6 +74,20 @@ void handle_nvme_io_share(unsigned int cmdSlotTag, NVME_IO_COMMAND *nvmeIOCmd)
 	 * - (LBA1 + length 와 LBA2) or (LBA2 + length 와 LBA1) 이 겹침
 	 *
 	 */
+
+	IO_READ_COMMAND_DW12 readInfo12;
+	unsigned int sourceLba[2], targetLba[2]; // sourceLba: physical mapping이 되어있는 LBA, targetLba: 새로운 mapping 이 필요한 LBA
+	unsigned int nlb; // number of logical blocks (= length 정보)
+
+	readInfo12.dword = nvmeIOCmd->dword[12];
+	nlb = readInfo12.NLB;
+
+	/*get sourceLba and targetLba*/
+
+	ASSERT(sourceLba[0] < storageCapacity_L && (sourceLba[1] < STORAGE_CAPACITY_H || sourceLba[1] == 0));
+	ASSERT(targetLba[0] < storageCapacity_L && (targetLba[1] < STORAGE_CAPACITY_H || targetLba[1] == 0));
+
+	ReqTransNvmeToSlice(cmdSlotTag, targetLba[0], sourceLba[0], nlb, IO_NVM_SHARE);
 }
 
 void handle_nvme_io_read(unsigned int cmdSlotTag, NVME_IO_COMMAND *nvmeIOCmd)
@@ -96,7 +111,7 @@ void handle_nvme_io_read(unsigned int cmdSlotTag, NVME_IO_COMMAND *nvmeIOCmd)
 	ASSERT((nvmeIOCmd->PRP1[0] & 0xF) == 0 && (nvmeIOCmd->PRP2[0] & 0xF) == 0); //error
 	ASSERT(nvmeIOCmd->PRP1[1] < 0x10 && nvmeIOCmd->PRP2[1] < 0x10);
 
-	ReqTransNvmeToSlice(cmdSlotTag, startLba[0], nlb, IO_NVM_READ);
+	ReqTransNvmeToSlice(cmdSlotTag, startLba[0], 0, nlb, IO_NVM_READ);
 }
 
 
@@ -124,7 +139,7 @@ void handle_nvme_io_write(unsigned int cmdSlotTag, NVME_IO_COMMAND *nvmeIOCmd)
 	ASSERT((nvmeIOCmd->PRP1[0] & 0xF) == 0 && (nvmeIOCmd->PRP2[0] & 0xF) == 0);
 	ASSERT(nvmeIOCmd->PRP1[1] < 0x10 && nvmeIOCmd->PRP2[1] < 0x10);
 
-	ReqTransNvmeToSlice(cmdSlotTag, startLba[0], nlb, IO_NVM_WRITE);
+	ReqTransNvmeToSlice(cmdSlotTag, startLba[0], 0, nlb, IO_NVM_WRITE);
 }
 
 void handle_nvme_io_cmd(NVME_COMMAND *nvmeCmd)
@@ -156,6 +171,12 @@ void handle_nvme_io_cmd(NVME_COMMAND *nvmeCmd)
 		{
 			//xil_printf("IO Read Command\r\n");
 			handle_nvme_io_read(nvmeCmd->cmdSlotTag, nvmeIOCmd);
+			break;
+		}
+		case IO_NVM_SHARE:
+		{
+			//xil_printf("IO SHARE Command\r\n");
+			handle_nvme_io_share(nvmeCmd->cmdSlotTag,nvmeIOCmd);
 			break;
 		}
 		default:

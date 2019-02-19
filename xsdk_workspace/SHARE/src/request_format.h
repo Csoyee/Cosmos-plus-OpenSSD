@@ -69,6 +69,7 @@
 #define REQ_CODE_FLUSH				0x0F
 #define REQ_CODE_RxDMA				0x10
 #define REQ_CODE_TxDMA				0x20
+#define REQ_CODE_SHARE				0x30 // FIXME: is it okay to use 0x30 ?
 
 #define REQ_CODE_OCSSD_PHY_TYPE_BASE	0xA0
 #define REQ_CODE_OCSSD_PHY_WRITE		0xA0
@@ -149,7 +150,6 @@ typedef struct _REQ_OPTION{
 	unsigned int reserved0 : 24;
 } REQ_OPTION, *P_REQ_OPTION;
 
-// TODO: 현재 request format은 logicalSliceAddr 하나만 전달 (share은 2개의 lba 전달 - 어디에 저장하여 전달?)
 typedef struct _SSD_REQ_FORMAT
 {
 	unsigned int reqType : 4;
@@ -158,6 +158,7 @@ typedef struct _SSD_REQ_FORMAT
 	unsigned int nvmeCmdSlotTag : 16;
 
 	unsigned int logicalSliceAddr;
+	unsigned int sourceSliceAddr; // SY Add, Source LSA address (no problem?)
 
 	REQ_OPTION reqOpt;
 	DATA_BUF_INFO dataBufInfo;

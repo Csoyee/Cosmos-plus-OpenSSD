@@ -85,7 +85,7 @@
 #define IO_NVM_WRITE_UNCORRECTABLE							0x04
 #define IO_NVM_COMPARE										0x05
 #define IO_NVM_DATASET_MANAGEMENT							0x09
-// TODO : add IO command for share
+#define IO_NVM_SHARE										0x80 // 0x80 ~ 0xFF: vendor specific opcodes for NVM commands
 
 /*Status Code Type */
 #define SCT_GENERIC_COMMAND_STATUS							0

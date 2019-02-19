@@ -105,7 +105,6 @@ typedef struct _DIE_STATE_TABLE {
 	DIE_STATE_ENTRY dieState[USER_CHANNELS][USER_WAYS];
 } DIE_STATE_TABLE, *P_DIE_STATE_TABLE;
 
-
 typedef struct _WAY_PRIORITY_ENTRY {
 	unsigned int idleHead :	4;
 	unsigned int idleTail :	4;

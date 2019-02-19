@@ -75,9 +75,10 @@ void InitDependencyTable()
 	}
 }
 
-void ReqTransNvmeToSlice(unsigned int cmdSlotTag, unsigned int startLba, unsigned int nlb, unsigned int cmdCode)
+// SY mod: add sourceLba argument for share command
+void ReqTransNvmeToSlice(unsigned int cmdSlotTag, unsigned int startLba, unsigned int sourceLba, unsigned int nlb, unsigned int cmdCode)
 {
-	unsigned int reqSlotTag, requestedNvmeBlock, tempNumOfNvmeBlock, transCounter, tempLsa, loop, nvmeBlockOffset, nvmeDmaStartIndex, reqCode;
+	unsigned int reqSlotTag, requestedNvmeBlock, tempNumOfNvmeBlock, transCounter, tempLsa, tempLsa2, loop, nvmeBlockOffset, nvmeDmaStartIndex, reqCode;
 
 	requestedNvmeBlock = nlb + 1;
 	transCounter = 0;
@@ -85,10 +86,17 @@ void ReqTransNvmeToSlice(unsigned int cmdSlotTag, unsigned int startLba, unsigne
 	tempLsa = startLba / NVME_BLOCKS_PER_SLICE;
 	loop = ((startLba % NVME_BLOCKS_PER_SLICE) + requestedNvmeBlock) / NVME_BLOCKS_PER_SLICE;
 
+	if(cmdCode == IO_NVM_SHARE)
+	{
+		tempLsa2 = sourceLba / NVME_BLOCKS_PER_SLICE;
+	} // SY add
+
 	if(cmdCode == IO_NVM_WRITE)
 		reqCode = REQ_CODE_WRITE;
 	else if(cmdCode == IO_NVM_READ)
 		reqCode = REQ_CODE_READ;
+	else if(cmdCode == IO_NVM_SHARE)
+		reqCode = REQ_CODE_SHARE;
 	else
 		assert(!"[WARNING] Not supported command code [WARNING]");
 
@@ -108,10 +116,15 @@ void ReqTransNvmeToSlice(unsigned int cmdSlotTag, unsigned int startLba, unsigne
 	reqPoolPtr->reqPool[reqSlotTag].nvmeDmaInfo.startIndex = nvmeDmaStartIndex;
 	reqPoolPtr->reqPool[reqSlotTag].nvmeDmaInfo.nvmeBlockOffset = nvmeBlockOffset;
 	reqPoolPtr->reqPool[reqSlotTag].nvmeDmaInfo.numOfNvmeBlock = tempNumOfNvmeBlock;
+	if(cmdCode == IO_NVM_SHARE)
+	{
+		reqPoolPtr->reqPool[reqSlotTag].sourceSliceAddr = tempLsa2;
+	} // SY add
 
 	PutToSliceReqQ(reqSlotTag);
 
 	tempLsa++;
+	tempLsa2++; // SY add
 	transCounter++;
 	nvmeDmaStartIndex += tempNumOfNvmeBlock;
 
@@ -130,10 +143,15 @@ void ReqTransNvmeToSlice(unsigned int cmdSlotTag, unsigned int startLba, unsigne
 		reqPoolPtr->reqPool[reqSlotTag].nvmeDmaInfo.startIndex = nvmeDmaStartIndex;
 		reqPoolPtr->reqPool[reqSlotTag].nvmeDmaInfo.nvmeBlockOffset = nvmeBlockOffset;
 		reqPoolPtr->reqPool[reqSlotTag].nvmeDmaInfo.numOfNvmeBlock = tempNumOfNvmeBlock;
+		if(cmdCode == IO_NVM_SHARE)
+		{
+			reqPoolPtr->reqPool[reqSlotTag].sourceSliceAddr = tempLsa2;
+		} // SY add
 
 		PutToSliceReqQ(reqSlotTag);
 
 		tempLsa++;
+		tempLsa2++; // SY add
 		transCounter++;
 		nvmeDmaStartIndex += tempNumOfNvmeBlock;
 	}
@@ -153,6 +171,10 @@ void ReqTransNvmeToSlice(unsigned int cmdSlotTag, unsigned int startLba, unsigne
 	reqPoolPtr->reqPool[reqSlotTag].nvmeDmaInfo.startIndex = nvmeDmaStartIndex;
 	reqPoolPtr->reqPool[reqSlotTag].nvmeDmaInfo.nvmeBlockOffset = nvmeBlockOffset;
 	reqPoolPtr->reqPool[reqSlotTag].nvmeDmaInfo.numOfNvmeBlock = tempNumOfNvmeBlock;
+	if(cmdCode == IO_NVM_SHARE)
+	{
+		reqPoolPtr->reqPool[reqSlotTag].sourceSliceAddr = tempLsa2;
+	} // SY add
 
 	PutToSliceReqQ(reqSlotTag);
 }
@@ -160,7 +182,8 @@ void ReqTransNvmeToSlice(unsigned int cmdSlotTag, unsigned int startLba, unsigne
 
 void DataShare (unsigned int originReqSlotTag) {
 	/*
-	 * TODO , REQ_TYPE_NAND로 만들어서 LowLevelReqQ 로 내림
+	 * TODO, REQ_TYPE_NAND로 만들어서 LowLevelReqQ 로 내림
+	 * NOTE, EvictDataBufEntry, DataReadFromNand 함수를 보면 일반적으로 해당 레벨에서 l2v, v2l mapping 정보를 수정함. SHARE도 해당 레벨에서 mapping 정보만 수정해도 되지 않을까?
 	 *
 	 * reqType = REQ_TYPE_NAND;
 	 * reqCode = SHARE;
@@ -172,7 +195,16 @@ void DataShare (unsigned int originReqSlotTag) {
 	 * nandInfo.virtualSliceAddr = logicalSliceMapPtr에서 vsa 받아옴.
 	 *
 	 * SelectLowLevelReqQ(reqSlotTag);
+	 *
 	 */
+
+	unsigned int sourceLsa, targetLsa;
+
+	sourceLsa = reqPoolPtr->reqPool[originReqSlotTag].sourceSliceAddr;
+	targetLsa = reqPoolPtr->reqPool[originReqSlotTag].logicalSliceAddr;
+
+	logicalSliceMapPtr->logicalSlice[targetLsa].virtualSliceAddr = logicalSliceMapPtr->logicalSlice[sourceLsa].virtualSliceAddr;
+	// virtualSliceMapPtr은 어떻게 수정할지 ?
 }
 
 void EvictDataBufEntry(unsigned int originReqSlotTag)
@@ -244,12 +276,27 @@ void ReqTransSliceToLowLevel()
 		reqSlotTag = GetFromSliceReqQ();
 		if(reqSlotTag == REQ_SLOT_TAG_FAIL)
 			return ;
-		/*
-		 * TODO, SHARE command 에 대한 로직 추가
-		 *
-		 * - 아직 physical mapping 안 되어있고 buffer에 있을 때는 어떻게 할지?
-		 * - buffer에 없을 때에는 DataReadFromNand, EvictDataBufEntry 같은 함수 만들어서 low level request queue로 request 전달
-		 */
+
+		if (reqPoolPtr->reqPool[reqSlotTag].reqCode == REQ_CODE_SHARE)
+		{
+			/*
+			 * TODO, SHARE command 에 대한 로직 추가
+			 *
+			 * - 아직 lba2 physical mapping 안 되어있고 buffer에 있을 때는 어떻게 할지?
+			 * - buffer에 없을 때에는 DataReadFromNand, EvictDataBufEntry 같은 함수 만들어서 (임시 function: DataShare) low level request queue로 request 전달
+			 */
+			dataBufEntry = CheckDataBufHit(reqSlotTag);
+			if (dataBufEntry != DATA_BUF_FAIL)
+			{
+				// TODO data buffer hit, physical mapping이 안되어있는 상태, mapping 정보를 어떻게 수정할지?
+			}
+			else
+			{
+				// data buffer miss, TODO - NAND 접근은 할 필요 없이 mapping 정보만 수정 --> low level request queue로 request를 내려야 할까?
+				DataShare(reqSlotTag);
+			}
+			continue;
+		}
 
 		//allocate a data buffer entry for this request
 		dataBufEntry = CheckDataBufHit(reqSlotTag);
@@ -428,7 +475,7 @@ unsigned int UpdateRowAddrDepTableForBufBlockedReq(unsigned int reqSlotTag)
 void SelectLowLevelReqQ(unsigned int reqSlotTag)
 {
 	unsigned int dieNo, chNo, wayNo, bufDepCheckReport, rowAddrDepCheckReport, rowAddrDepTableUpdateReport;
-	// TODO: NAND request 까지 내려가는 과정에서 request list 정보 (prevreq, nextreq)랑 queuetype만 바뀌므로 크게 수정할 필요 없음. [physical address 변환 과정은 제거해도 됨.]
+	// TODO: NAND request 까지 내려가는 과정에서 request list 정보 (prevreq, nextreq)랑 queuetype만 바뀌므로 크게 수정할 필요 없음. [physical address 변환 과정은 l2pmap[lba2] 을 통해 vsa 받아와서 수행?]
 	bufDepCheckReport = CheckBufDep(reqSlotTag);
 	if(bufDepCheckReport == BUF_DEPENDENCY_REPORT_PASS)
 	{
