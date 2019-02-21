@@ -103,6 +103,8 @@
 
 #define FTL_MANAGEMENT_END_ADDR				((WAY_PRIORITY_TABLE_ADDR + sizeof(WAY_PRIORITY_TABLE))- 1)
 
+// TODO: do we need extra information for POR? (e.g., logging update info)
+
 #define RESERVED1_START_ADDR				(FTL_MANAGEMENT_END_ADDR + 1)
 #define RESERVED1_END_ADDR					0x3FFFFFFF
 

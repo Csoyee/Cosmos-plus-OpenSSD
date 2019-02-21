@@ -126,6 +126,7 @@ void handle_nvme_io_cmd(NVME_COMMAND *nvmeCmd)
 	{
 		case IO_NVM_FLUSH:
 		{
+			// TODO: flush metadata in memory to NAND for POR
 			xil_printf("IO Flush Command\r\n");
 			nvmeCPL.dword[0] = 0;
 			nvmeCPL.specific = 0x0;

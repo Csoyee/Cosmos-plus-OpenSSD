@@ -77,7 +77,7 @@ void InitAddressMap()
 		for(blockNo=0 ; blockNo<TOTAL_BLOCKS_PER_DIE ; blockNo++)
 			phyBlockMapPtr->phyBlock[dieNo][blockNo].remappedPhyBlock = blockNo;
 
-		bbtInfoMapPtr->bbtInfo[dieNo].phyBlock = 0;
+		bbtInfoMapPtr->bbtInfo[dieNo].phyBlock = 0;  // NOTE, 각각의 die 에 대해서 0번 block에 bad block table을 저장함
 		bbtInfoMapPtr->bbtInfo[dieNo].grownBadUpdate = BBT_INFO_GROWN_BAD_UPDATE_NONE;
 	}
 
@@ -253,6 +253,7 @@ void InitCurrentBlockOfDieMap()
 	}
 }
 
+// NOTE, start of bad block table mgmt function (TODO: check bbt mgmt for POR implement)
 void ReadBadBlockTable(unsigned int tempBbtBufAddr[], unsigned int tempBbtBufEntrySize)
 {
 	unsigned int tempPage, reqSlotTag, dieNo;
@@ -876,7 +877,7 @@ void UpdatePhyBlockMapForGrownBadBlock(unsigned int dieNo, unsigned int phyBlock
 	bbtInfoMapPtr->bbtInfo[dieNo].grownBadUpdate = BBT_INFO_GROWN_BAD_UPDATE_BOOKED;
 }
 
-
+// TODO: bad block 이 늘어남에 따라 바뀐 BBT table의 정보를 flash에 기록함 (해당 함수는 nvme shutdown 시에만 call 됨)
 void UpdateBadBlockTableForGrownBadBlock(unsigned int tempBufAddr)
 {
 	unsigned int dieNo, phyBlockNo, tempBbtBufBaseAddr, tempBbtBufEntrySize;
