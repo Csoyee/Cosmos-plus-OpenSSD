@@ -49,6 +49,7 @@
 
 #include "data_buffer.h"
 #include "address_translation.h"
+#include "por.h"
 #include "request_allocation.h"
 #include "request_schedule.h"
 #include "request_transform.h"

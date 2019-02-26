@@ -83,7 +83,7 @@
 #define CLEAN_DATA_IN_BYTE						0xff
 
 #define USED_PAGES_FOR_BAD_BLOCK_TABLE_PER_DIE	(TOTAL_BLOCKS_PER_DIE / BYTES_PER_DATA_REGION_OF_PAGE + 1)
-#define DATA_SIZE_OF_BAD_BLOCK_TABLE_PER_DIE	(TOTAL_BLOCKS_PER_DIE)
+#define DATA_SIZE_OF_BAD_BLOCK_TABLE_PER_DIE	(TOTAL_BLOCKS_PER_DIE) // physical block 1번 전체를 bad block을 위한 공간으로 사용함.
 #define START_PAGE_NO_OF_BAD_BLOCK_TABLE_BLOCK	(1)		//bad block table begins at second page for preserving a bad block mark of the block allocated to save bad block table
 
 #define BBT_INFO_GROWN_BAD_UPDATE_NONE			0

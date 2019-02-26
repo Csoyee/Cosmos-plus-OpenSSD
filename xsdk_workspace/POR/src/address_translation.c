@@ -79,6 +79,7 @@ void InitAddressMap()
 
 		bbtInfoMapPtr->bbtInfo[dieNo].phyBlock = 0;  // NOTE, 각각의 die 에 대해서 0번 block에 bad block table을 저장함
 		bbtInfoMapPtr->bbtInfo[dieNo].grownBadUpdate = BBT_INFO_GROWN_BAD_UPDATE_NONE;
+		mtInfoMapPtr->mtInfo[dieNo].phyBlock = 1;
 	}
 
 	sliceAllocationTargetDie = FindDieForFreeSliceAllocation();
@@ -451,6 +452,7 @@ void SaveBadBlockTable(unsigned char dieState[], unsigned int tempBbtBufAddr[], 
 			}
 
 		loop++;
+		// NOTE: tempPage++ ?, why dataSize++?
 		dataSize++;
 		dataSize -= BYTES_PER_DATA_REGION_OF_PAGE;
 	}
@@ -595,6 +597,7 @@ void InitBlockDieMap()
 {
 	unsigned int dieNo;
 	unsigned char eraseFlag = 1;
+	int i;
 
 	xil_printf("Press 'X' to re-make the bad block table.\r\n");
 	if (inbyte() == 'X')
@@ -611,6 +614,14 @@ void InitBlockDieMap()
 	//to prevent accessing bbtBlock by host
 	for(dieNo=0 ; dieNo<USER_DIES ; dieNo++)
 		phyBlockMapPtr->phyBlock[dieNo][bbtInfoMapPtr->bbtInfo[dieNo].phyBlock].bad = 1;
+
+	/*
+ 	 * TODO: to prevent accessing mappingBlock by host, make badblock mark
+	 *
+	 * for(dieNo=0 ; dieNo<USER_DIES ; dieNo++)
+	 *	for(i=0 ; i< USED_BLOCKS_FOR_MAPPING_TABLE_PER_DIE ; i++) // FIXME: mapping table size
+	 *		phyBlockMapPtr->phyBlock[dieNo][mtInfoMapPtr->mtInfo[dieNo].phyBlock + i].bad = 1;
+	 */
 
 	RemapBadBlock();
 
@@ -877,7 +888,7 @@ void UpdatePhyBlockMapForGrownBadBlock(unsigned int dieNo, unsigned int phyBlock
 	bbtInfoMapPtr->bbtInfo[dieNo].grownBadUpdate = BBT_INFO_GROWN_BAD_UPDATE_BOOKED;
 }
 
-// TODO: bad block 이 늘어남에 따라 바뀐 BBT table의 정보를 flash에 기록함 (해당 함수는 nvme shutdown 시에만 call 됨)
+// TODO: bad block 이 늘어남에 따라 바뀐 BBT table의 정보를 flash에 기록함 (해당 함수는 nvme shutdown 시에만 call 됨 )
 void UpdateBadBlockTableForGrownBadBlock(unsigned int tempBufAddr)
 {
 	unsigned int dieNo, phyBlockNo, tempBbtBufBaseAddr, tempBbtBufEntrySize;
