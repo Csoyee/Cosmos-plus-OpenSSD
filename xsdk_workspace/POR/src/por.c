@@ -18,6 +18,7 @@ P_MAPPING_TABLE_INFO_MAP mtInfoMapPtr;
 
 void ReadMappingTable(unsigned int tempMtBufAddr[], unsigned int tempMtBufEntrySize)
 {
+	// TODO: die 별로 읽어오는 함수 구분? (mapping table이 너무 크면 buffer 너무 많이 사용함.)
 	unsigned int tempPage, reqSlotTag, dieNo;
 	int loop, dataSize, blockNo;
 
@@ -135,11 +136,37 @@ void SaveMappingTable(unsigned char dieState[], unsigned int tempMtBufAddr[], un
 
 void RecoverMappingTable(unsigned int tempBufAddr)
 {
+	/*
+	 * 본 함수는 mapping table 이 NAND에 제대로 쓰여있는지 확인하기 위해 NAND에서 table을 읽어오고
+	 * 만일 NAND에 mapping table이 flush 되어있지 않은 경우 mapping table을 만드는 함수이다.
+	 * */
 
+	unsigned int mtMarker, dieNo;
+
+	/*
+	 * TODO: NAND로부터 mapping table을 읽어온다.
+	 * > ReadMappingTable 함수를 통해 읽어옴
+	 * > 고려 사항: 읽어오는 buffer 크기 (mapping table 총 크기는 32MB 이기 떄문에 die 별로 나눠서 읽어오던지 해야함.)
+	 *
+	 * - NOTE: 모든 mapping table을 init 할 때 읽어오는 것은 high overhead (metadata로 NAND가 flush 된 상태인지 가리키는 데이터를 관리해서 넣기?)
+	 * */
+	mtMarker = MAPPING_TABLE_MAKER_IDLE;
+	for (dieNo=0 ; dieNo<USER_DIES; dieNo++)
+	{
+
+	}
+
+	// 만일 NAND에 mapping table이 존재하지 않는 경우
+	if(mtMarker == MAPPING_TABLE_MAKER_TRIGGER)
+		InitSliceMap();
 }
 
 void UpdateMappingTable(unsigned int tempBufAddr)
 {
-
+	/*
+	 * TODO: l2v mapping table을 연속된 buffer 영역에 할당해서 NAND로 flush 함
+	 *
+	 * SaveMappingTable 함수를 활용해 NAND에 write 요청을 보낸다.
+	 * */
 }
 

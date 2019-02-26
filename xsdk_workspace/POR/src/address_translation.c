@@ -84,7 +84,7 @@ void InitAddressMap()
 
 	sliceAllocationTargetDie = FindDieForFreeSliceAllocation();
 
-	InitSliceMap();
+	InitSliceMap(); // TODO: RecoverMappingTable (por.c) 함수로 대체
 	InitBlockDieMap();
 }
 
