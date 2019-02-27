@@ -24,9 +24,11 @@
 #define DIE_STATE_MAPPING_TABLE_HOLD			2
 #define DIE_STATE_MAPPING_TABLE_UPDATE		3
 
-#define DATA_SIZE_OF_MAPPING_TABLE_PER_DIE		(sizeof(VIRTUAL_SLICE_MAP)/USER_DIES) // FIXME
-#define USED_PAGES_FOR_MAPPING_TABLE_PER_DIE	(DATA_SIZE_OF_MAPPING_TABLE_PER_DIE / BYTES_PER_DATA_REGION_OF_PAGE + 1) // FIXME
-#define USED_BLOCKS_FOR_MAPPING_TABLE_PER_DIE	(DATA_SIZE_OF_MAPPING_TABLE_PER_DIE / TOTAL_BLOCKS_PER_DIE + 1)
+// check: Logical slice map size: 4MB per die (total 4MB*32 = 128MB)
+// SLICES_PER_SSD: 32M --> 1M LSN 단위로 32개로 나누어서 die 마다 저장하기
+#define DATA_SIZE_OF_MAPPING_TABLE_PER_DIE		(sizeof(LOGICAL_SLICE_MAP)/USER_DIES) //
+#define USED_PAGES_FOR_MAPPING_TABLE_PER_DIE	(DATA_SIZE_OF_MAPPING_TABLE_PER_DIE / BYTES_PER_DATA_REGION_OF_PAGE + 1) // 4MB/16K+1 = 257 (257 pages per die)
+#define USED_BLOCKS_FOR_MAPPING_TABLE_PER_DIE	(USED_PAGES_FOR_MAPPING_TABLE_PER_DIE / USER_PAGES_PER_BLOCK  + 1) // 257/128 + 1 = 3 (3 blocks per die)
 #define START_PAGE_NO_OF_MAPPING_TABLE_BLOCK	(1)		//bad block table begins at second page for preserving a bad block mark of the block allocated to save bad block table
 
 #define MAPPING_TABLE_SAVED_BLOCK_NUM sizeof(VIRTUAL_SLICE_MAP)
@@ -42,3 +44,5 @@ typedef struct _MAPPING_TABLE_INFO_MAP{
 } MAPPING_TABLE_INFO_MAP, *P_MAPPING_TABLE_INFO_MAP;
 
 extern P_MAPPING_TABLE_INFO_MAP mtInfoMapPtr;
+
+void SaveMappingTable(unsigned char dieState[], unsigned int tempMtBufAddr[], unsigned int tempMtBufEntrySize);

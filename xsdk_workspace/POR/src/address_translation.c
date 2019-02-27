@@ -85,6 +85,7 @@ void InitAddressMap()
 	sliceAllocationTargetDie = FindDieForFreeSliceAllocation();
 
 	InitSliceMap(); // TODO: RecoverMappingTable (por.c) 함수로 대체
+
 	InitBlockDieMap();
 }
 
@@ -597,7 +598,7 @@ void InitBlockDieMap()
 {
 	unsigned int dieNo;
 	unsigned char eraseFlag = 1;
-	int i;
+	//int i;
 
 	xil_printf("Press 'X' to re-make the bad block table.\r\n");
 	if (inbyte() == 'X')
