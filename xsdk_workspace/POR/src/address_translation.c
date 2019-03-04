@@ -79,7 +79,8 @@ void InitAddressMap()
 
 		bbtInfoMapPtr->bbtInfo[dieNo].phyBlock = 0;  // NOTE, 각각의 die 에 대해서 0번 block에 bad block table을 저장함
 		bbtInfoMapPtr->bbtInfo[dieNo].grownBadUpdate = BBT_INFO_GROWN_BAD_UPDATE_NONE;
-		mtInfoMapPtr->mtInfo[dieNo].phyBlock = 1;
+		mtInfoMapPtr->mtInfo[dieNo].curBlock = START_BLOCK_NO_OF_MAPPING_TABLE_PER_DIE;	// 0 for bbt, 1 for sys meta
+		mtInfoMapPtr->mtInfo[dieNo].curPage = PlsbPage2VpageTranslation(START_PAGE_NO_OF_MAPPING_TABLE_BLOCK);
 	}
 
 	sliceAllocationTargetDie = FindDieForFreeSliceAllocation();
@@ -330,7 +331,7 @@ void FindBadBlock(unsigned char dieState[], unsigned int tempBbtBufAddr[], unsig
 				reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalCh = Vdie2PchTranslation(dieNo);
 				reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalWay = Vdie2PwayTranslation(dieNo);
 				reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalBlock = phyBlockNo;
-				reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalPage = BAD_BLOCK_MARK_PAGE0;
+				reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalPage = BAD_BLOCK_MARK_PAGE0; // Q: BAD_BLOCK_MARK_PAGE에 bad block mark 하는 코드는 어디에 있는지?
 
 				SelectLowLevelReqQ(reqSlotTag);
 			}
@@ -620,7 +621,7 @@ void InitBlockDieMap()
  	 * TODO: to prevent accessing mappingBlock by host, make badblock mark
 	 *
 	 * for(dieNo=0 ; dieNo<USER_DIES ; dieNo++)
-	 *	for(i=0 ; i< USED_BLOCKS_FOR_MAPPING_TABLE_PER_DIE ; i++) // FIXME: mapping table size
+	 *	for(i=0 ; i< RESERVED_BLOCK_FOR_MAPPING_TABLE_PER_DIE ; i++) // FIXME: mapping table size
 	 *		phyBlockMapPtr->phyBlock[dieNo][mtInfoMapPtr->mtInfo[dieNo].phyBlock + i].bad = 1;
 	 */
 
@@ -889,7 +890,7 @@ void UpdatePhyBlockMapForGrownBadBlock(unsigned int dieNo, unsigned int phyBlock
 	bbtInfoMapPtr->bbtInfo[dieNo].grownBadUpdate = BBT_INFO_GROWN_BAD_UPDATE_BOOKED;
 }
 
-// TODO: bad block 이 늘어남에 따라 바뀐 BBT table의 정보를 flash에 기록함 (해당 함수는 nvme shutdown 시에만 call 됨 )
+// bad block 이 늘어남에 따라 바뀐 BBT table의 정보를 flash에 기록함 (해당 함수는 nvme shutdown 시에만 call 됨 )
 void UpdateBadBlockTableForGrownBadBlock(unsigned int tempBufAddr)
 {
 	unsigned int dieNo, phyBlockNo, tempBbtBufBaseAddr, tempBbtBufEntrySize;

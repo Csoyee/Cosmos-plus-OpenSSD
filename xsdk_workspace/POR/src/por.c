@@ -14,18 +14,18 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 P_MAPPING_TABLE_INFO_MAP mtInfoMapPtr;
+P_SYSTEM_META_INFO_MAP sysInfoMapPtr;
 
-
-void ReadMappingTable(unsigned int tempMtBufAddr[], unsigned int tempMtBufEntrySize)
+void ReadSystemMeta(unsigned int tempSysBufAddr[], unsigned int tempSysBufEntrySize)
 {
-	// TODO: die 별로 읽어오는 함수 구분? (mapping table이 너무 크면 buffer 너무 많이 사용함.)
 	unsigned int tempPage, reqSlotTag, dieNo;
-	int loop, dataSize, blockNo;
+	int loop, dataSize;
 
 	loop = 0;
-	blockNo = 0;
-	dataSize = DATA_SIZE_OF_MAPPING_TABLE_PER_DIE;
-	tempPage = PlsbPage2VpageTranslation(START_PAGE_NO_OF_MAPPING_TABLE_BLOCK); 	//mapping table is saved at lsb pages
+	dataSize = DATA_SIZE_OF_BAD_BLOCK_TABLE_PER_DIE;
+	tempPage = PlsbPage2VpageTranslation(START_PAGE_NO_OF_BAD_BLOCK_TABLE_BLOCK); 	//bad block table is saved at lsb pages
+
+
 
 	while(dataSize>0)
 	{
@@ -42,11 +42,11 @@ void ReadMappingTable(unsigned int tempMtBufAddr[], unsigned int tempMtBufEntryS
 			reqPoolPtr->reqPool[reqSlotTag].reqOpt.rowAddrDependencyCheck = REQ_OPT_ROW_ADDR_DEPENDENCY_NONE;
 			reqPoolPtr->reqPool[reqSlotTag].reqOpt.blockSpace = REQ_OPT_BLOCK_SPACE_TOTAL;
 
-			reqPoolPtr->reqPool[reqSlotTag].dataBufInfo.addr = tempMtBufAddr[dieNo] + loop * tempMtBufEntrySize + blockNo * (tempMtBufEntrySize * USER_PAGES_PER_BLOCK);
+			reqPoolPtr->reqPool[reqSlotTag].dataBufInfo.addr = tempSysBufAddr[dieNo] + loop * tempSysBufEntrySize;
 
 			reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalCh = Vdie2PchTranslation(dieNo);
 			reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalWay = Vdie2PwayTranslation(dieNo);
-			reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalBlock = mtInfoMapPtr->mtInfo[dieNo].phyBlock + blockNo;
+			reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalBlock = sysInfoMapPtr->sysInfo[dieNo].phyBlock;
 			reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalPage = Vpage2PlsbPageTranslation(tempPage);
 
 			SelectLowLevelReqQ(reqSlotTag);
@@ -54,27 +54,76 @@ void ReadMappingTable(unsigned int tempMtBufAddr[], unsigned int tempMtBufEntryS
 
 		tempPage++;
 		loop++;
-		if(tempPage % USER_PAGES_PER_BLOCK == 0)
+		dataSize -= BYTES_PER_DATA_REGION_OF_PAGE;
+	}
+
+
+}
+
+void ReadMappingTable(unsigned int tempMtBufAddr[], unsigned int tempMtBufEntrySize)
+{
+	unsigned int reqSlotTag, dieNo;
+	int loop, dataSize;
+
+	loop = 0;
+	dataSize = DATA_SIZE_OF_MAPPING_TABLE_PER_DIE;
+
+	while(dataSize>0)
+	{
+		for(dieNo = 0; dieNo < USER_DIES; dieNo++)
 		{
-			blockNo ++;
-			tempPage = PlsbPage2VpageTranslation(START_PAGE_NO_OF_MAPPING_TABLE_BLOCK);
-			loop = 0;
+			reqSlotTag = GetFromFreeReqQ();
+
+			reqPoolPtr->reqPool[reqSlotTag].reqType = REQ_TYPE_NAND;
+			reqPoolPtr->reqPool[reqSlotTag].reqCode = REQ_CODE_READ;
+			reqPoolPtr->reqPool[reqSlotTag].reqOpt.dataBufFormat = REQ_OPT_DATA_BUF_ADDR;
+			reqPoolPtr->reqPool[reqSlotTag].reqOpt.nandAddr = REQ_OPT_NAND_ADDR_PHY_ORG;
+			reqPoolPtr->reqPool[reqSlotTag].reqOpt.nandEcc = REQ_OPT_NAND_ECC_ON;
+			reqPoolPtr->reqPool[reqSlotTag].reqOpt.nandEccWarning = REQ_OPT_NAND_ECC_WARNING_OFF;
+			reqPoolPtr->reqPool[reqSlotTag].reqOpt.rowAddrDependencyCheck = REQ_OPT_ROW_ADDR_DEPENDENCY_NONE;
+			reqPoolPtr->reqPool[reqSlotTag].reqOpt.blockSpace = REQ_OPT_BLOCK_SPACE_TOTAL;
+
+			reqPoolPtr->reqPool[reqSlotTag].dataBufInfo.addr = tempMtBufAddr[dieNo] + loop * tempMtBufEntrySize;
+
+			reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalCh = Vdie2PchTranslation(dieNo);
+			reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalWay = Vdie2PwayTranslation(dieNo);
+			reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalBlock = mtInfoMapPtr->mtInfo[dieNo].curBlock;
+			reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalPage =  Vpage2PlsbPageTranslation(mtInfoMapPtr->mtInfo[dieNo].curPage);
+
+			SelectLowLevelReqQ(reqSlotTag);
+		}
+
+		loop++;
+		mtInfoMapPtr->mtInfo[dieNo].curPage ++;
+		if(mtInfoMapPtr->mtInfo[dieNo].curPage % USER_PAGES_PER_BLOCK == 0)
+		{
+			mtInfoMapPtr->mtInfo[dieNo].curBlock ++ ;
+			mtInfoMapPtr->mtInfo[dieNo].curPage = PlsbPage2VpageTranslation(START_PAGE_NO_OF_MAPPING_TABLE_BLOCK);
+			if (mtInfoMapPtr->mtInfo[dieNo].curBlock == END_BLOCK_NO_OF_MAPPING_TABLE_PER_DIE)
+			{
+				mtInfoMapPtr->mtInfo[dieNo].curBlock = START_BLOCK_NO_OF_MAPPING_TABLE_PER_DIE;
+			}
 		}
 		dataSize -= BYTES_PER_DATA_REGION_OF_PAGE;
 	}
 
 	SyncAllLowLevelReqDone();
+
 }
 
 void SaveMappingTable(unsigned char dieState[], unsigned int tempMtBufAddr[], unsigned int tempMtBufEntrySize)
 {
 	unsigned int dieNo, reqSlotTag;
-	int loop, dataSize, tempPage, blockNo;
+	int loop, dataSize;
 
 	loop = 0;
-	blockNo = 0;
 	dataSize = DATA_SIZE_OF_MAPPING_TABLE_PER_DIE;
-	tempPage = PlsbPage2VpageTranslation(START_PAGE_NO_OF_MAPPING_TABLE_BLOCK);	//bad block table is saved at lsb pages
+
+	for (dieNo = 0 ; dieNo < USER_DIES ; dieNo ++)
+	{
+		mtInfoMapPtr[dieNo].mtInfo->startBlock = mtInfoMapPtr[dieNo].mtInfo->curBlock;
+		mtInfoMapPtr[dieNo].mtInfo->startPage = mtInfoMapPtr[dieNo].mtInfo->curPage;
+	}
 
 	while(dataSize>0)
 	{
@@ -96,7 +145,7 @@ void SaveMappingTable(unsigned char dieState[], unsigned int tempMtBufAddr[], un
 
 					reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalCh = Vdie2PchTranslation(dieNo);
 					reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalWay = Vdie2PwayTranslation(dieNo);
-					reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalBlock = bbtInfoMapPtr->bbtInfo[dieNo].phyBlock + blockNo;
+					reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalBlock = mtInfoMapPtr->mtInfo[dieNo].curBlock;
 					reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalPage = 0;	//dummy
 
 					SelectLowLevelReqQ(reqSlotTag);
@@ -113,28 +162,33 @@ void SaveMappingTable(unsigned char dieState[], unsigned int tempMtBufAddr[], un
 				reqPoolPtr->reqPool[reqSlotTag].reqOpt.rowAddrDependencyCheck = REQ_OPT_ROW_ADDR_DEPENDENCY_NONE;
 				reqPoolPtr->reqPool[reqSlotTag].reqOpt.blockSpace = REQ_OPT_BLOCK_SPACE_TOTAL;
 
-				reqPoolPtr->reqPool[reqSlotTag].dataBufInfo.addr = tempMtBufAddr[dieNo] + loop * tempMtBufEntrySize + blockNo * (tempMtBufEntrySize * USER_PAGES_PER_BLOCK);
+				reqPoolPtr->reqPool[reqSlotTag].dataBufInfo.addr = tempMtBufAddr[dieNo] + loop * tempMtBufEntrySize;
 
 				reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalCh = Vdie2PchTranslation(dieNo);
 				reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalWay = Vdie2PwayTranslation(dieNo);
-				reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalBlock = mtInfoMapPtr->mtInfo[dieNo].phyBlock + blockNo;
-				reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalPage =  Vpage2PlsbPageTranslation(tempPage);
+				reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalBlock = mtInfoMapPtr->mtInfo[dieNo].curBlock;
+				reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalPage =  Vpage2PlsbPageTranslation(mtInfoMapPtr->mtInfo[dieNo].curPage);
 
 				SelectLowLevelReqQ(reqSlotTag);
 			}
 
-		tempPage++;
 		loop++;
-		if(tempPage % USER_PAGES_PER_BLOCK == 0)
+		mtInfoMapPtr->mtInfo[dieNo].curPage ++;
+		if(mtInfoMapPtr->mtInfo[dieNo].curPage % USER_PAGES_PER_BLOCK == 0)
 		{
-			blockNo ++;
-			tempPage = PlsbPage2VpageTranslation(START_PAGE_NO_OF_MAPPING_TABLE_BLOCK);
-			loop = 0;
+			mtInfoMapPtr->mtInfo[dieNo].curBlock ++ ;
+			mtInfoMapPtr->mtInfo[dieNo].curPage = PlsbPage2VpageTranslation(START_PAGE_NO_OF_MAPPING_TABLE_BLOCK);
+			if (mtInfoMapPtr->mtInfo[dieNo].curBlock == END_BLOCK_NO_OF_MAPPING_TABLE_PER_DIE)
+			{
+				mtInfoMapPtr->mtInfo[dieNo].curBlock = START_BLOCK_NO_OF_MAPPING_TABLE_PER_DIE;
+			}
 		}
+
 		dataSize -= BYTES_PER_DATA_REGION_OF_PAGE;
 	}
 
 	SyncAllLowLevelReqDone();
+
 }
 
 
@@ -145,7 +199,7 @@ void RecoverMappingTable(unsigned int tempBufAddr)
 	 * 만일 NAND에 mapping table이 flush 되어있지 않은 경우 mapping table을 만드는 함수이다.
 	 * */
 
-	unsigned int mtMarker, dieNo, tempMtBufEntrySize, pageNo;
+	unsigned int mtMarker, dieNo, tempMtBufEntrySize, sliceNo;
 	unsigned int tempMtBufAddr[USER_DIES];
 
 	/*
@@ -161,14 +215,18 @@ void RecoverMappingTable(unsigned int tempBufAddr)
 
 	ReadMappingTable(tempMtBufAddr, tempMtBufEntrySize);
 
+	// FIXME,
 	mtMarker = MAPPING_TABLE_MAKER_IDLE;
-	for (pageNo=0 ; pageNo<SLICES_PER_SSD; pageNo++)
+	for (sliceNo=0 ; sliceNo<SLICES_PER_SSD; sliceNo++)
 	{
-		if(logicalSliceMapPtr->logicalSlice[pageNo].virtualSliceAddr != VSA_NONE &&
-				logicalSliceMapPtr->logicalSlice[pageNo].virtualSliceAddr < 0 &&
-				logicalSliceMapPtr->logicalSlice[pageNo].virtualSliceAddr >= SLICES_PER_SSD)
+		if(	logicalSliceMapPtr->logicalSlice[sliceNo].virtualSliceAddr >= 0 ||
+				logicalSliceMapPtr->logicalSlice[sliceNo].virtualSliceAddr < SLICES_PER_SSD)
 		{
-			xil_printf("mapping table of lsa %d does not exist", pageNo);
+			virtualSliceMapPtr->virtualSlice[logicalSliceMapPtr->logicalSlice[sliceNo].virtualSliceAddr].logicalSliceAddr = sliceNo;
+		}
+		else if (logicalSliceMapPtr->logicalSlice[sliceNo].virtualSliceAddr != VSA_NONE)
+		{
+			xil_printf("mapping table of lsa %d does not exist", sliceNo);
 			mtMarker = MAPPING_TABLE_MAKER_TRIGGER;
 			break;
 		}
@@ -185,7 +243,7 @@ void UpdateMappingTable(unsigned int tempBufAddr)
 	unsigned char dieState[USER_DIES];
 	unsigned int tempMtBufAddr[USER_DIES];
 	/*
-	 * TODO: l2v mapping table을 연속된 buffer 영역에 할당해서 NAND로 flush 함
+	 * TODO: buffer에 있는 l2v mapping table 를 NAND로 flush 함.
 	 *
 	 * SaveMappingTable 함수를 활용해 NAND에 write 요청을 보낸다.
 	 * */
