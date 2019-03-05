@@ -54,12 +54,19 @@
  * > virtualBlockMapPtr[dieNo][block loop..]
  * > mtInfoMapPtr[dieNo]
  *
+ * - Slice 16K (page1: mapping table info map, page2: die map, page 3-8: block map)
  * */
 
-#define DATA_SIZE_OF_SYSTEM_META_PER_DIE	(sizeof(VIRTUAL_DIE_ENTRY) + sizeof(VIRTUAL_BLOCK_ENTRY) + sizeof(SYSTEM_META_INFO_ENTRY)))
-#define USED_PAGES_FOR_SYSTEM_META_PER_DIE	(DATA_SIZE_OF_SYSTEM_META_PER_DIE / BYTES_PER_DATA_REGION_OF_PAGE + 1)
-#define USED_BLOCKS_FOR_SYSTEM_META_PER_DIE	(USED_PAGES_FOR_SYSTEM_META_PER_DIE / USER_PAGES_PER_BLOCK  + 1) // 257/128 + 1 = 3 (3 blocks per die)
-#define START_PAGE_NO_OF_SYSTEM_META_BLOCK	(1)		//각 block의 0번 페이지는 bad block mark page.
+#define DATA_SIZE_OF_MT_INFO_PER_DIE	sizeof(MAPPING_TABLE_INFO_ENTRY)
+#define USED_PAGES_FOR_MT_INFO_PER_DIE	(DATA_SIZE_OF_MT_INFO_PER_DIE / BYTES_PER_DATA_REGION_OF_PAGE + 1)
+#define DATA_SIZE_OF_DIE_MAP_PER_DIE	sizeof(VIRTUAL_DIE_ENTRY)
+#define USED_PAGES_FOR_DIE_MAP_PER_DIE	(DATA_SIZE_OF_DIE_MAP_PER_DIE / BYTES_PER_DATA_REGION_OF_PAGE + 1)
+#define DATA_SIZE_OF_BLOCK_MAP_PER_DIE	sizeof(VIRTUAL_BLOCK_ENTRY) * USER_BLOCKS_PER_DIE
+#define USED_PAGES_FOR_BLOCK_MAP_PER_DIE	(DATA_SIZE_OF_BLOCK_MAP_PER_DIE / BYTES_PER_DATA_REGION_OF_PAGE + 1)
+
+#define START_PAGE_NO_OF_MT_INFO_BLOCK		(1)		//각 block의 0번 페이지는 bad block mark page.
+#define START_PAGE_NO_OF_DIE_MAP_BLOCK		(2)
+#define START_PAGE_NO_OF_BLOCK_MAP_BLOCK	(3)		// 96K / 16K + 1 = 7 pages
 
 /////////////////////////////////////////////
 
@@ -69,25 +76,16 @@ typedef struct _MAPPING_TABLE_INFO_ENTRY{
 	unsigned int curPage : 16;
 	unsigned int startBlock : 16;
 	unsigned int startPage : 16;
-} MAPPING_TABLE_INFO_ENTRY, *P_MAPPING_TABLE_ENTRY;
+} MAPPING_TABLE_INFO_ENTRY, *P_MAPPING_TABLE_INFO_ENTRY;
 
 typedef struct _MAPPING_TABLE_INFO_MAP{
 	MAPPING_TABLE_INFO_ENTRY mtInfo[USER_DIES];
 } MAPPING_TABLE_INFO_MAP, *P_MAPPING_TABLE_INFO_MAP;
-
-typedef struct _SYSTEM_META_INFO_ENTRY{
-	unsigned int phyBlock : 16;
-} SYSTEM_META_INFO_ENTRY, *P_SYSTEM_META_ENTRY;
-
-typedef struct _SYSTEM_META_INFO_MAP{
-	SYSTEM_META_INFO_ENTRY sysInfo[USER_DIES];
-} SYSTEM_META_INFO_MAP, *P_SYSTEM_META_INFO_MAP;
 
 /*
  * TODO: flush all requests in data buffer
  * */
 
 extern P_MAPPING_TABLE_INFO_MAP mtInfoMapPtr;
-extern P_SYSTEM_META_INFO_MAP sysInfoMapPtr;
 
-void SaveMappingTable(unsigned char dieState[], unsigned int tempMtBufAddr[], unsigned int tempMtBufEntrySize);
+void SaveMappingTable(unsigned int tempMtBufAddr[], unsigned int tempMtBufEntrySize);
