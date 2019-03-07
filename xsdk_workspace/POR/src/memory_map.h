@@ -104,8 +104,9 @@
 
 // for POR
 #define MAPPING_TABLE_INFO_MAP_ADDR			((WAY_PRIORITY_TABLE_ADDR + sizeof(WAY_PRIORITY_TABLE)))
+#define RESERVED_FOR_SPARE_DATA				((MAPPING_TABLE_INFO_MAP_ADDR + 256))   // this area is for dummy spare data
 
-#define FTL_MANAGEMENT_END_ADDR				((MAPPING_TABLE_INFO_MAP_ADDR + sizeof(MAPPING_TABLE_INFO_MAP_ADDR))- 1)
+#define FTL_MANAGEMENT_END_ADDR				((RESERVED_FOR_SPARE_DATA + sizeof(RESERVED_FOR_SPARE_DATA))- 1)
 
 // TODO: do we need extra information for POR? (e.g., logging update info)
 

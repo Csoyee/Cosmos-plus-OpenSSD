@@ -80,6 +80,7 @@
 #define REQ_OPT_DATA_BUF_TEMP_ENTRY	1
 #define REQ_OPT_DATA_BUF_ADDR		2
 #define REQ_OPT_DATA_BUF_NONE		3
+#define REQ_OPT_DATA_BUF_FOR_POR	4
 
 #define REQ_OPT_NAND_ADDR_VSA		0
 #define REQ_OPT_NAND_ADDR_PHY_ORG	1
@@ -140,13 +141,13 @@ typedef struct _NAND_INFO{
 
 
 typedef struct _REQ_OPTION{
-	unsigned int dataBufFormat : 2;
+	unsigned int dataBufFormat : 3;
 	unsigned int nandAddr : 2;
 	unsigned int nandEcc : 1;
 	unsigned int nandEccWarning : 1;
 	unsigned int rowAddrDependencyCheck : 1;
 	unsigned int blockSpace : 1;
-	unsigned int reserved0 : 24;
+	unsigned int reserved0 : 23;
 } REQ_OPTION, *P_REQ_OPTION;
 
 

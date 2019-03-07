@@ -754,7 +754,7 @@ unsigned int GenerateDataBufAddr(unsigned int reqSlotTag)
 			return (DATA_BUFFER_BASE_ADDR + reqPoolPtr->reqPool[reqSlotTag].dataBufInfo.entry * BYTES_PER_DATA_REGION_OF_SLICE);
 		else if(reqPoolPtr->reqPool[reqSlotTag].reqOpt.dataBufFormat == REQ_OPT_DATA_BUF_TEMP_ENTRY)
 			return (TEMPORARY_DATA_BUFFER_BASE_ADDR + reqPoolPtr->reqPool[reqSlotTag].dataBufInfo.entry * BYTES_PER_DATA_REGION_OF_SLICE);
-		else if(reqPoolPtr->reqPool[reqSlotTag].reqOpt.dataBufFormat == REQ_OPT_DATA_BUF_ADDR)
+		else if(reqPoolPtr->reqPool[reqSlotTag].reqOpt.dataBufFormat == REQ_OPT_DATA_BUF_ADDR || reqPoolPtr->reqPool[reqSlotTag].reqOpt.dataBufFormat == REQ_OPT_DATA_BUF_FOR_POR)
 			return reqPoolPtr->reqPool[reqSlotTag].dataBufInfo.addr;
 
 		return RESERVED_DATA_BUFFER_BASE_ADDR;
@@ -781,6 +781,8 @@ unsigned int GenerateSpareDataBufAddr(unsigned int reqSlotTag)
 			return (TEMPORARY_SPARE_DATA_BUFFER_BASE_ADDR + reqPoolPtr->reqPool[reqSlotTag].dataBufInfo.entry * BYTES_PER_SPARE_REGION_OF_SLICE);
 		else if(reqPoolPtr->reqPool[reqSlotTag].reqOpt.dataBufFormat == REQ_OPT_DATA_BUF_ADDR)
 			return (reqPoolPtr->reqPool[reqSlotTag].dataBufInfo.addr + BYTES_PER_DATA_REGION_OF_SLICE); // modify PAGE_SIZE to other
+		else if(reqPoolPtr->reqPool[reqSlotTag].reqOpt.dataBufFormat == REQ_OPT_DATA_BUF_FOR_POR)
+			return (RESERVED_FOR_SPARE_DATA);
 
 		return (RESERVED_DATA_BUFFER_BASE_ADDR + BYTES_PER_DATA_REGION_OF_SLICE);
 	}

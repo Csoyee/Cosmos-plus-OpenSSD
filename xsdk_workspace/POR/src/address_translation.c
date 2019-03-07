@@ -87,7 +87,8 @@ void InitAddressMap()
 
 	sliceAllocationTargetDie = FindDieForFreeSliceAllocation();
 
-	InitSliceMap(); // TODO: RecoverMappingTable (por.c) 함수로 대체
+	RecoverMappingTable(LOGICAL_SLICE_MAP_ADDR);
+	//InitSliceMap();
 
 	InitBlockDieMap();
 }
@@ -95,6 +96,7 @@ void InitAddressMap()
 void InitSliceMap()
 {
 	int sliceAddr;
+
 	for(sliceAddr=0; sliceAddr<SLICES_PER_SSD ; sliceAddr++)
 	{
 		logicalSliceMapPtr->logicalSlice[sliceAddr].virtualSliceAddr = VSA_NONE;
@@ -456,8 +458,7 @@ void SaveBadBlockTable(unsigned char dieState[], unsigned int tempBbtBufAddr[], 
 			}
 
 		loop++;
-		// NOTE: tempPage++ ?, why dataSize++?
-		dataSize++;
+		tempPage++;
 		dataSize -= BYTES_PER_DATA_REGION_OF_PAGE;
 	}
 
@@ -601,7 +602,7 @@ void InitBlockDieMap()
 {
 	unsigned int dieNo;
 	unsigned char eraseFlag = 1;
-	//int i;
+	int i;
 
 	xil_printf("Press 'X' to re-make the bad block table.\r\n");
 	if (inbyte() == 'X')
@@ -619,13 +620,13 @@ void InitBlockDieMap()
 	for(dieNo=0 ; dieNo<USER_DIES ; dieNo++)
 		phyBlockMapPtr->phyBlock[dieNo][bbtInfoMapPtr->bbtInfo[dieNo].phyBlock].bad = 1;
 
-	/*
- 	 * TODO: to prevent accessing mappingBlock by host, make badblock mark
-	 *
-	 * for(dieNo=0 ; dieNo<USER_DIES ; dieNo++)
-	 *	for(i=0 ; i< RESERVED_BLOCK_FOR_MAPPING_TABLE_PER_DIE ; i++) // FIXME: mapping table size
-	 *		phyBlockMapPtr->phyBlock[dieNo][mtInfoMapPtr->mtInfo[dieNo].phyBlock + i].bad = 1;
-	 */
+
+ 	//  TODO: to prevent accessing mappingBlock by host, make badblock mark
+
+	for(dieNo=0 ; dieNo<USER_DIES ; dieNo++)
+	 	for(i=1 ; i< END_PAGE_NO_OF_BLOCK_MAP_BLOCK ; i++) // FIXME: mapping table size
+	 		phyBlockMapPtr->phyBlock[dieNo][i].bad = 1;
+
 
 	RemapBadBlock();
 

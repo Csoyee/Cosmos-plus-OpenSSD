@@ -67,7 +67,7 @@
 #define START_PAGE_NO_OF_MT_INFO_BLOCK		(1)		//각 block의 0번 페이지는 bad block mark page.
 #define START_PAGE_NO_OF_DIE_MAP_BLOCK		(2)
 #define START_PAGE_NO_OF_BLOCK_MAP_BLOCK	(3)		// 96K / 16K + 1 = 7 pages
-
+#define END_PAGE_NO_OF_BLOCK_MAP_BLOCK		(9)
 /////////////////////////////////////////////
 
 
@@ -88,4 +88,6 @@ typedef struct _MAPPING_TABLE_INFO_MAP{
 
 extern P_MAPPING_TABLE_INFO_MAP mtInfoMapPtr;
 
+void UpdateMappingTable(unsigned int tempBufAddr);
+void RecoverMappingTable(unsigned int tempBufAddr);
 void SaveMappingTable(unsigned int tempMtBufAddr[], unsigned int tempMtBufEntrySize);
