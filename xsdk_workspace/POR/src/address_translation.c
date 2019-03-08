@@ -260,7 +260,7 @@ void InitCurrentBlockOfDieMap()
 	}
 }
 
-// NOTE, start of bad block table mgmt function (TODO: check bbt mgmt for POR implement)
+// NOTE, start of bad block table mgmt function
 void ReadBadBlockTable(unsigned int tempBbtBufAddr[], unsigned int tempBbtBufEntrySize)
 {
 	unsigned int tempPage, reqSlotTag, dieNo;
@@ -624,7 +624,7 @@ void InitBlockDieMap()
  	//  TODO: to prevent accessing mappingBlock by host, make badblock mark
 
 	for(dieNo=0 ; dieNo<USER_DIES ; dieNo++)
-	 	for(i=1 ; i< END_PAGE_NO_OF_BLOCK_MAP_BLOCK ; i++) // FIXME: mapping table size
+	 	for(i=1 ; i< END_PAGE_NO_OF_BLOCK_MAP_BLOCK ; i++)
 	 		phyBlockMapPtr->phyBlock[dieNo][i].bad = 1;
 
 

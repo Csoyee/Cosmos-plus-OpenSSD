@@ -187,6 +187,8 @@ typedef struct _PHY_BLOCK_MAP {
 void InitAddressMap();
 void InitSliceMap();
 void InitBlockDieMap();
+void InitDieMap();
+void InitBlockMap();
 
 unsigned int AddrTransRead(unsigned int logicalSliceAddr);
 unsigned int AddrTransWrite(unsigned int logicalSliceAddr);
