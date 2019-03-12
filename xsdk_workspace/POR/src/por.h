@@ -66,9 +66,10 @@
 #define USED_PAGES_FOR_BLOCK_MAP_PER_DIE	(DATA_SIZE_OF_BLOCK_MAP_PER_DIE / BYTES_PER_DATA_REGION_OF_PAGE + 1)
 
 #define START_PAGE_NO_OF_MT_INFO_BLOCK		(1)		//각 block의 0번 페이지는 bad block mark page.
-#define START_PAGE_NO_OF_DIE_MAP_BLOCK		(START_PAGE_NO_OF_MT_INFO_BLOCK)
-#define START_PAGE_NO_OF_BLOCK_MAP_BLOCK	(START_PAGE_NO_OF_DIE_MAP_BLOCK)		// 96K / 16K + 1 = 7 pages
+#define START_PAGE_NO_OF_DIE_MAP_BLOCK		(START_PAGE_NO_OF_MT_INFO_BLOCK + 1)
+#define START_PAGE_NO_OF_BLOCK_MAP_BLOCK	(START_PAGE_NO_OF_DIE_MAP_BLOCK + 1)		// 96K / 16K + 1 = 7 pages
 #define END_PAGE_NO_OF_BLOCK_MAP_BLOCK		(START_PAGE_NO_OF_BLOCK_MAP_BLOCK + USED_PAGES_FOR_BLOCK_MAP_PER_DIE - 1)
+
 /////////////////////////////////////////////
 
 
@@ -84,8 +85,13 @@ typedef struct _MAPPING_TABLE_INFO_MAP{
 } MAPPING_TABLE_INFO_MAP, *P_MAPPING_TABLE_INFO_MAP;
 
 
+
 extern P_MAPPING_TABLE_INFO_MAP mtInfoMapPtr;
+extern int sysMetaMaker ;
 
 void UpdateMappingTable(unsigned int tempBufAddr);
 void RecoverMappingTable(unsigned int tempBufAddr);
 void SaveMappingTable(unsigned int tempMtBufAddr[], unsigned int tempMtBufEntrySize);
+void UpdateSystemMeta();
+void RecoverDieMap();
+void RecoverBlockMap();

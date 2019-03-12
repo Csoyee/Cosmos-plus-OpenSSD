@@ -59,6 +59,7 @@ P_MAPPING_TABLE_INFO_MAP mtInfoMapPtr;
 
 unsigned char sliceAllocationTargetDie;
 unsigned int mbPerbadBlockSpace;
+int sysMetaMaker ;
 
 
 void InitAddressMap()
@@ -73,6 +74,8 @@ void InitAddressMap()
 	bbtInfoMapPtr = (P_BAD_BLOCK_TABLE_INFO_MAP) BAD_BLOCK_TABLE_INFO_MAP_ADDR;
 	mtInfoMapPtr = (P_MAPPING_TABLE_INFO_MAP) MAPPING_TABLE_INFO_MAP_ADDR;
 
+	sysMetaMaker = POR_MAKER_IDLE;
+
 	//init phyblockMap
 	for(dieNo=0 ; dieNo<USER_DIES ; dieNo++)
 	{
@@ -81,8 +84,6 @@ void InitAddressMap()
 
 		bbtInfoMapPtr->bbtInfo[dieNo].phyBlock = 0;  // NOTE, 각각의 die 에 대해서 0번 block에 bad block table을 저장함
 		bbtInfoMapPtr->bbtInfo[dieNo].grownBadUpdate = BBT_INFO_GROWN_BAD_UPDATE_NONE;
-		mtInfoMapPtr->mtInfo[dieNo].curBlock = START_BLOCK_NO_OF_MAPPING_TABLE_PER_DIE;	// 0 for bbt, 1 for sys meta
-		mtInfoMapPtr->mtInfo[dieNo].curPage = PlsbPage2VpageTranslation(START_PAGE_NO_OF_MAPPING_TABLE_BLOCK);
 	}
 
 	sliceAllocationTargetDie = FindDieForFreeSliceAllocation();
@@ -611,7 +612,9 @@ void InitBlockDieMap()
 		eraseFlag = 0;
 	}
 
+
 	InitDieMap();
+	//RecoverDieMap();
 
 	//make bad block table
 	RecoverBadBlockTable(RESERVED_DATA_BUFFER_BASE_ADDR);
@@ -620,22 +623,23 @@ void InitBlockDieMap()
 	for(dieNo=0 ; dieNo<USER_DIES ; dieNo++)
 		phyBlockMapPtr->phyBlock[dieNo][bbtInfoMapPtr->bbtInfo[dieNo].phyBlock].bad = 1;
 
-
  	//  TODO: to prevent accessing mappingBlock by host, make badblock mark
-
 	for(dieNo=0 ; dieNo<USER_DIES ; dieNo++)
-	 	for(i=1 ; i< END_PAGE_NO_OF_BLOCK_MAP_BLOCK ; i++)
+	 	for(i=1 ; i< END_BLOCK_NO_OF_MAPPING_TABLE_PER_DIE ; i++)
 	 		phyBlockMapPtr->phyBlock[dieNo][i].bad = 1;
-
 
 	RemapBadBlock();
 
 	InitBlockMap();
+	//RecoverBlockMap();
 
 	if(eraseFlag)
 		EraseUserBlockSpace();
 
 	InitCurrentBlockOfDieMap();
+
+	if(sysMetaMaker == POR_MAKER_TRIGGER)
+		UpdateSystemMeta();
 }
 
 unsigned int AddrTransRead(unsigned int logicalSliceAddr)
