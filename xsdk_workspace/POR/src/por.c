@@ -20,7 +20,7 @@ void ReadSystemMeta(unsigned int tempSysBufAddr[], unsigned int tempSysBufEntryS
 	int loop;
 
 	loop = 0;
-	tempPage = PlsbPage2VpageTranslation(page); 	//bad block table is saved at lsb pages
+	tempPage = page; 	//Meta data is saved at lsb pages
 
 	blockNo = 1;
 
@@ -47,7 +47,7 @@ void ReadSystemMeta(unsigned int tempSysBufAddr[], unsigned int tempSysBufEntryS
 			reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalCh = Vdie2PchTranslation(dieNo);
 			reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalWay = Vdie2PwayTranslation(dieNo);
 			reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalBlock = blockNo;
-			reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalPage = Vpage2PlsbPageTranslation(tempPage);
+			reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalPage = tempPage;
 
 			SelectLowLevelReqQ(reqSlotTag);
 		}
@@ -68,7 +68,7 @@ void SaveSystemMeta(unsigned int tempSysBufAddr[], unsigned int tempSysBufEntryS
 
 	loop = 0;
 	dataSize = DATA_SIZE_OF_BAD_BLOCK_TABLE_PER_DIE;
-	tempPage = PlsbPage2VpageTranslation(page);	//bad block table is saved at lsb pages
+	tempPage = page;	//Meta data is saved at lsb pages
 	blockNo = 1;
 
 	while(dataSize>0)
@@ -94,7 +94,7 @@ void SaveSystemMeta(unsigned int tempSysBufAddr[], unsigned int tempSysBufEntryS
 			reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalCh = Vdie2PchTranslation(dieNo);
 			reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalWay = Vdie2PwayTranslation(dieNo);
 			reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalBlock = blockNo;
-			reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalPage =  Vpage2PlsbPageTranslation(tempPage);
+			reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalPage =  tempPage;
 
 			SelectLowLevelReqQ(reqSlotTag);
 		}
@@ -150,11 +150,10 @@ void RecoverBlockMap()
 
 	// TODO: Block Map read 한 것이 valid 한 지 어떻게 체크 할지
 
-	marker = POR_MAKER_TRIGGER;
 	if (marker == POR_MAKER_TRIGGER)
 	{
-		sysMetaMaker = POR_MAKER_TRIGGER;
-		InitBlockMap();
+//		sysMetaMaker = POR_MAKER_TRIGGER;
+		xil_printf("Recover Block Map Fail \r\n");
 	}
 }
 
@@ -221,7 +220,7 @@ void RecoverDieMap()
 		else if(virtualDieMapPtr->die[dieNo].freeBlockCnt > USER_BLOCKS_PER_DIE
 				|| virtualDieMapPtr->die[dieNo].freeBlockCnt < 0)
 		{
-			xil_printf("[DieMap]startpage invalid %d (%d)\r\n",virtualDieMapPtr->die[dieNo].freeBlockCnt, dieNo);
+			xil_printf("[DieMap]freeBlockCnt invalid %d (%d)\r\n",virtualDieMapPtr->die[dieNo].freeBlockCnt, dieNo);
 			marker = POR_MAKER_TRIGGER;
 			break;
 		}
@@ -229,8 +228,8 @@ void RecoverDieMap()
 
 	if (marker == POR_MAKER_TRIGGER)
 	{
-		sysMetaMaker = POR_MAKER_TRIGGER;
-		InitDieMap();
+//		sysMetaMaker = POR_MAKER_TRIGGER;
+		xil_printf("Recover Die Map Fail \r\n");
 	}
 }
 
@@ -283,28 +282,28 @@ int RecoverMappingTableInfoMap()
 		if(mtInfoMapPtr->mtInfo[dieNo].curBlock < START_BLOCK_NO_OF_MAPPING_TABLE_PER_DIE
 				|| mtInfoMapPtr->mtInfo[dieNo].curBlock > END_BLOCK_NO_OF_MAPPING_TABLE_PER_DIE)
 		{
-			xil_printf("[MtInfo]invalid Current Block number %d\r\n", mtInfoMapPtr->mtInfo[dieNo].curBlock);
+			xil_printf("[MtInfo]invalid Current Block number %d %d\r\n", mtInfoMapPtr->mtInfo[dieNo].curBlock, dieNo);
 			mtMarker = POR_MAKER_TRIGGER;
 			break;
 		}
 		else if(mtInfoMapPtr->mtInfo[dieNo].startBlock < START_BLOCK_NO_OF_MAPPING_TABLE_PER_DIE
 				|| mtInfoMapPtr->mtInfo[dieNo].startBlock > END_BLOCK_NO_OF_MAPPING_TABLE_PER_DIE)
 		{
-			xil_printf("[MtInfo]invalid Start Block number %d\r\n", mtInfoMapPtr->mtInfo[dieNo].startBlock);
+			xil_printf("[MtInfo]invalid Start Block number %d %d\r\n", mtInfoMapPtr->mtInfo[dieNo].startBlock, dieNo);
 			mtMarker = POR_MAKER_TRIGGER;
 			break;
 		}
 		else if(mtInfoMapPtr->mtInfo[dieNo].curPage < START_PAGE_NO_OF_MAPPING_TABLE_BLOCK
 				|| mtInfoMapPtr->mtInfo[dieNo].curPage > USER_PAGES_PER_BLOCK)
 		{
-			xil_printf("[MtInfo]invalid Current Page number %d\r\n", mtInfoMapPtr->mtInfo[dieNo].curPage);
+			xil_printf("[MtInfo]invalid Current Page number %d %d\r\n", mtInfoMapPtr->mtInfo[dieNo].curPage, dieNo);
 			mtMarker = POR_MAKER_TRIGGER;
 			break;
 		}
 		else if(mtInfoMapPtr->mtInfo[dieNo].startPage < START_PAGE_NO_OF_MAPPING_TABLE_BLOCK
 				|| mtInfoMapPtr->mtInfo[dieNo].startPage > USER_PAGES_PER_BLOCK)
 		{
-			xil_printf("[MtInfo]invalid Start Page number %d\r\n", mtInfoMapPtr->mtInfo[dieNo].startPage);
+			xil_printf("[MtInfo]invalid Start Page number %d %d\r\n", mtInfoMapPtr->mtInfo[dieNo].startPage, dieNo);
 			mtMarker = POR_MAKER_TRIGGER;
 			break;
 		}
@@ -312,6 +311,7 @@ int RecoverMappingTableInfoMap()
 
 	if (mtMarker == POR_MAKER_TRIGGER)
 	{
+		xil_printf("Recover Mapping Table Info Fail \r\n");
 		sysMetaMaker = POR_MAKER_TRIGGER;
 		mtInfoMapPtr->mtInfo[dieNo].curBlock = mtInfoMapPtr->mtInfo[dieNo].startBlock = START_BLOCK_NO_OF_MAPPING_TABLE_PER_DIE;
 		mtInfoMapPtr->mtInfo[dieNo].curPage = mtInfoMapPtr->mtInfo[dieNo].startPage = START_PAGE_NO_OF_MAPPING_TABLE_BLOCK;
@@ -356,9 +356,9 @@ void UpdateSystemMeta()
 	/*
 	 * test code for check
 	 *
-	 *
-	 * > RecoverDieMap();
-	 *
+	 *	RecoverMappingTableInfoMap();
+	 *	RecoverDieMap();
+	 *	RecoverBlockMap();
 	 * */
 }
 
@@ -416,6 +416,11 @@ void ReadMappingTable(unsigned int tempMtBufAddr[], unsigned int tempMtBufEntryS
 		dataSize -= BYTES_PER_DATA_REGION_OF_PAGE;
 	}
 
+	for(dieNo = 0; dieNo < USER_DIES; dieNo++)
+	{
+		mtInfoMapPtr->mtInfo[dieNo].curBlock = readBlock;
+		mtInfoMapPtr->mtInfo[dieNo].curPage = readPage;
+	}
 	SyncAllLowLevelReqDone();
 
 }
@@ -547,7 +552,7 @@ void RecoverMappingTable(unsigned int tempBufAddr)
 	{
 		virtualSliceMapPtr->virtualSlice[sliceNo].logicalSliceAddr = LSA_NONE;
 	}
-	// FIXME,
+
 	mtMarker = POR_MAKER_IDLE;
 	for (sliceNo=0 ; sliceNo<SLICES_PER_SSD; sliceNo++)
 	{

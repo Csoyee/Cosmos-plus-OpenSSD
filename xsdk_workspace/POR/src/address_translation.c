@@ -623,9 +623,8 @@ void InitBlockDieMap()
 	for(dieNo=0 ; dieNo<USER_DIES ; dieNo++)
 		phyBlockMapPtr->phyBlock[dieNo][bbtInfoMapPtr->bbtInfo[dieNo].phyBlock].bad = 1;
 
- 	//  TODO: to prevent accessing mappingBlock by host, make badblock mark
-	for(dieNo=0 ; dieNo<USER_DIES ; dieNo++)
-	 	for(i=1 ; i< END_BLOCK_NO_OF_MAPPING_TABLE_PER_DIE ; i++)
+ 	for(dieNo=0 ; dieNo<USER_DIES ; dieNo++)
+	 	for(i=1 ; i<= END_BLOCK_NO_OF_MAPPING_TABLE_PER_DIE ; i++)
 	 		phyBlockMapPtr->phyBlock[dieNo][i].bad = 1;
 
 	RemapBadBlock();
