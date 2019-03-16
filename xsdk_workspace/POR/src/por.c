@@ -136,24 +136,32 @@ void RecoverBlockMap()
 	unsigned int dieNo, tempSysEntrySize, marker;
 	unsigned int tempSysBufAddr[USER_DIES];
 
-	marker = POR_MAKER_IDLE;
-	// Read block map
-	tempSysEntrySize = BYTES_PER_DATA_REGION_OF_PAGE ;
 
-	for(dieNo = 0; dieNo < USER_DIES; dieNo++)
+	if( mtInfoMapPtr->mtInfo[0].format == POR_MAKER_TRIGGER )
 	{
-		tempSysBufAddr[dieNo] = VIRTUAL_BLOCK_MAP_ADDR + dieNo * DATA_SIZE_OF_BLOCK_MAP_PER_DIE;
-	}
-
-	ReadSystemMeta(tempSysBufAddr, tempSysEntrySize, DATA_SIZE_OF_BLOCK_MAP_PER_DIE, START_PAGE_NO_OF_BLOCK_MAP_BLOCK);
-
-
-	// TODO: Block Map read 한 것이 valid 한 지 어떻게 체크 할지
-
-	if (marker == POR_MAKER_TRIGGER)
+		xil_printf("init block map \r\n");
+		InitBlockMap();
+	} else
 	{
-//		sysMetaMaker = POR_MAKER_TRIGGER;
-		xil_printf("Recover Block Map Fail \r\n");
+		marker = POR_MAKER_IDLE;
+		// Read block map
+		tempSysEntrySize = BYTES_PER_DATA_REGION_OF_PAGE ;
+
+		for(dieNo = 0; dieNo < USER_DIES; dieNo++)
+		{
+			tempSysBufAddr[dieNo] = VIRTUAL_BLOCK_MAP_ADDR + dieNo * DATA_SIZE_OF_BLOCK_MAP_PER_DIE;
+		}
+
+		ReadSystemMeta(tempSysBufAddr, tempSysEntrySize, DATA_SIZE_OF_BLOCK_MAP_PER_DIE, START_PAGE_NO_OF_BLOCK_MAP_BLOCK);
+
+
+		// TODO: Block Map read 한 것이 valid 한 지 어떻게 체크 할지
+
+		if (marker == POR_MAKER_TRIGGER)
+		{
+	//		sysMetaMaker = POR_MAKER_TRIGGER;
+			xil_printf("Recover Block Map Fail \r\n");
+		}
 	}
 }
 
@@ -177,59 +185,66 @@ void RecoverDieMap()
 	unsigned int tempSysBufAddr[USER_DIES];
 	VIRTUAL_DIE_ENTRY* dieUpdater;
 
-	marker = POR_MAKER_IDLE;
-	// Read mapping_table_info_entry
-	tempSysBaseAddr = RESERVED_DATA_BUFFER_BASE_ADDR;
-	tempSysEntrySize = BYTES_PER_DATA_REGION_OF_PAGE + BYTES_PER_SPARE_REGION_OF_PAGE;
-	for(dieNo = 0; dieNo < USER_DIES; dieNo++)
+	if( mtInfoMapPtr->mtInfo[0].format == POR_MAKER_TRIGGER )
 	{
-		tempSysBufAddr[dieNo] = tempSysBaseAddr + dieNo * USED_PAGES_FOR_DIE_MAP_PER_DIE * tempSysEntrySize;
-	}
-
-	ReadSystemMeta(tempSysBufAddr, tempSysEntrySize, DATA_SIZE_OF_DIE_MAP_PER_DIE, START_PAGE_NO_OF_DIE_MAP_BLOCK);
-
-	for (dieNo = 0 ; dieNo < USER_DIES ; dieNo++)
+		xil_printf("init die map \r\n");
+		InitDieMap();
+	} else
 	{
-		dieUpdater = (VIRTUAL_DIE_ENTRY*) tempSysBufAddr[dieNo];
-		virtualDieMapPtr->die[dieNo] = *dieUpdater;
+		marker = POR_MAKER_IDLE;
+		// Read mapping_table_info_entry
+		tempSysBaseAddr = RESERVED_DATA_BUFFER_BASE_ADDR;
+		tempSysEntrySize = BYTES_PER_DATA_REGION_OF_PAGE + BYTES_PER_SPARE_REGION_OF_PAGE;
+		for(dieNo = 0; dieNo < USER_DIES; dieNo++)
+		{
+			tempSysBufAddr[dieNo] = tempSysBaseAddr + dieNo * USED_PAGES_FOR_DIE_MAP_PER_DIE * tempSysEntrySize;
+		}
 
-		if(virtualDieMapPtr->die[dieNo].currentBlock != BLOCK_NONE
-			&& (virtualDieMapPtr->die[dieNo].currentBlock < 0
-			|| virtualDieMapPtr->die[dieNo].currentBlock >= USER_BLOCKS_PER_DIE))
-		{
-			xil_printf("[DieMap]curBlock invalid %d (%d)\r\n", virtualDieMapPtr->die[dieNo].currentBlock, dieNo );
-			marker = POR_MAKER_TRIGGER;
-			break;
-		}
-		else if(virtualDieMapPtr->die[dieNo].headFreeBlock != BLOCK_NONE
-				&& (virtualDieMapPtr->die[dieNo].headFreeBlock < 0
-				|| virtualDieMapPtr->die[dieNo].headFreeBlock >= USER_BLOCKS_PER_DIE) )
-		{
-			xil_printf("[DieMap]startBlock invalid %d (%d)\r\n", virtualDieMapPtr->die[dieNo].headFreeBlock, dieNo);
-			marker = POR_MAKER_TRIGGER;
-			break;
-		}
-		else if(virtualDieMapPtr->die[dieNo].tailFreeBlock != BLOCK_NONE
-				&& (virtualDieMapPtr->die[dieNo].tailFreeBlock < 0
-				|| virtualDieMapPtr->die[dieNo].tailFreeBlock >= USER_BLOCKS_PER_DIE))
-		{
-			xil_printf("[DieMap]curPage invalid %d (%d)\r\n", virtualDieMapPtr->die[dieNo].tailFreeBlock, dieNo);
-			marker = POR_MAKER_TRIGGER;
-			break;
-		}
-		else if(virtualDieMapPtr->die[dieNo].freeBlockCnt > USER_BLOCKS_PER_DIE
-				|| virtualDieMapPtr->die[dieNo].freeBlockCnt < 0)
-		{
-			xil_printf("[DieMap]freeBlockCnt invalid %d (%d)\r\n",virtualDieMapPtr->die[dieNo].freeBlockCnt, dieNo);
-			marker = POR_MAKER_TRIGGER;
-			break;
-		}
-	}
+		ReadSystemMeta(tempSysBufAddr, tempSysEntrySize, DATA_SIZE_OF_DIE_MAP_PER_DIE, START_PAGE_NO_OF_DIE_MAP_BLOCK);
 
-	if (marker == POR_MAKER_TRIGGER)
-	{
-//		sysMetaMaker = POR_MAKER_TRIGGER;
-		xil_printf("Recover Die Map Fail \r\n");
+		for (dieNo = 0 ; dieNo < USER_DIES ; dieNo++)
+		{
+			dieUpdater = (VIRTUAL_DIE_ENTRY*) tempSysBufAddr[dieNo];
+			virtualDieMapPtr->die[dieNo] = *dieUpdater;
+
+			if(virtualDieMapPtr->die[dieNo].currentBlock != BLOCK_NONE
+				&& (virtualDieMapPtr->die[dieNo].currentBlock < 0
+				|| virtualDieMapPtr->die[dieNo].currentBlock >= USER_BLOCKS_PER_DIE))
+			{
+				xil_printf("[DieMap]curBlock invalid %d (%d)\r\n", virtualDieMapPtr->die[dieNo].currentBlock, dieNo );
+				marker = POR_MAKER_TRIGGER;
+				break;
+			}
+			else if(virtualDieMapPtr->die[dieNo].headFreeBlock != BLOCK_NONE
+					&& (virtualDieMapPtr->die[dieNo].headFreeBlock < 0
+					|| virtualDieMapPtr->die[dieNo].headFreeBlock >= USER_BLOCKS_PER_DIE) )
+			{
+				xil_printf("[DieMap]startBlock invalid %d (%d)\r\n", virtualDieMapPtr->die[dieNo].headFreeBlock, dieNo);
+				marker = POR_MAKER_TRIGGER;
+				break;
+			}
+			else if(virtualDieMapPtr->die[dieNo].tailFreeBlock != BLOCK_NONE
+					&& (virtualDieMapPtr->die[dieNo].tailFreeBlock < 0
+					|| virtualDieMapPtr->die[dieNo].tailFreeBlock >= USER_BLOCKS_PER_DIE))
+			{
+				xil_printf("[DieMap]curPage invalid %d (%d)\r\n", virtualDieMapPtr->die[dieNo].tailFreeBlock, dieNo);
+				marker = POR_MAKER_TRIGGER;
+				break;
+			}
+			else if(virtualDieMapPtr->die[dieNo].freeBlockCnt > USER_BLOCKS_PER_DIE
+					|| virtualDieMapPtr->die[dieNo].freeBlockCnt < 0)
+			{
+				xil_printf("[DieMap]freeBlockCnt invalid %d (%d)\r\n",virtualDieMapPtr->die[dieNo].freeBlockCnt, dieNo);
+				marker = POR_MAKER_TRIGGER;
+				break;
+			}
+		}
+
+		if (marker == POR_MAKER_TRIGGER)
+		{
+	//		sysMetaMaker = POR_MAKER_TRIGGER;
+			xil_printf("Recover Die Map Fail \r\n");
+		}
 	}
 }
 
@@ -256,7 +271,7 @@ void UpdateDieMap()
 
 }
 
-int RecoverMappingTableInfoMap()
+void RecoverMappingTableInfoMap()
 {
 	unsigned int dieNo, tempSysBaseAddr, tempSysEntrySize, mtMarker;
 	unsigned int tempSysBufAddr[USER_DIES];
@@ -312,13 +327,18 @@ int RecoverMappingTableInfoMap()
 	if (mtMarker == POR_MAKER_TRIGGER)
 	{
 		xil_printf("Recover Mapping Table Info Fail \r\n");
-		sysMetaMaker = POR_MAKER_TRIGGER;
-		mtInfoMapPtr->mtInfo[dieNo].curBlock = mtInfoMapPtr->mtInfo[dieNo].startBlock = START_BLOCK_NO_OF_MAPPING_TABLE_PER_DIE;
-		mtInfoMapPtr->mtInfo[dieNo].curPage = mtInfoMapPtr->mtInfo[dieNo].startPage = START_PAGE_NO_OF_MAPPING_TABLE_BLOCK;
-		return -1;
-	}
 
-	return 0;
+		mtInfoMapPtr->mtInfo[0].format = POR_MAKER_TRIGGER;
+
+		if( mtInfoMapPtr->mtInfo[0].format == POR_MAKER_TRIGGER )
+		{
+			for(dieNo=0 ; dieNo < USER_DIES ; dieNo ++)
+			{
+				mtInfoMapPtr->mtInfo[dieNo].startBlock = mtInfoMapPtr->mtInfo[dieNo].curBlock = START_BLOCK_NO_OF_MAPPING_TABLE_PER_DIE;	// 0 for bbt, 1 for sys meta
+				mtInfoMapPtr->mtInfo[dieNo].startPage = mtInfoMapPtr->mtInfo[dieNo].curPage = PlsbPage2VpageTranslation(START_PAGE_NO_OF_MAPPING_TABLE_BLOCK);
+			}
+		}
+	}
 }
 
 
@@ -328,6 +348,8 @@ void UpdateMappingTableInfoMap()
 	unsigned int dieNo, tempSysBaseAddr, tempSysEntrySize;
 	unsigned int tempSysBufAddr[USER_DIES];
 	MAPPING_TABLE_INFO_ENTRY* mtUpdater;
+
+	mtInfoMapPtr->mtInfo[0].format = POR_MAKER_IDLE;
 
 	tempSysBaseAddr = RESERVED_DATA_BUFFER_BASE_ADDR;
 	tempSysEntrySize = BYTES_PER_DATA_REGION_OF_PAGE + BYTES_PER_SPARE_REGION_OF_PAGE;
@@ -347,7 +369,6 @@ void UpdateMappingTableInfoMap()
 
 void UpdateSystemMeta()
 {
-
 	EraseSystemMeta();
 	UpdateMappingTableInfoMap();
 	UpdateDieMap();
@@ -521,71 +542,31 @@ void RecoverMappingTable(unsigned int tempBufAddr)
 
 	unsigned int mtMarker, dieNo, tempMtBufEntrySize, sliceNo;
 	unsigned int tempMtBufAddr[USER_DIES];
-	int retval;
 
 	/*
 	 * TODO: NAND로부터 mapping table을 읽어온다.
 	 * - NOTE: 모든 mapping table을 init 할 때 읽어오는 것은 high overhead (metadata로 NAND가 flush 된 상태인지 가리키는 데이터를 관리해서 넣기?)
 	 * */
 
-	retval = RecoverMappingTableInfoMap();
+	RecoverMappingTableInfoMap();
 
-	if(retval == -1)
+	if( mtInfoMapPtr->mtInfo[0].format == POR_MAKER_TRIGGER )
 	{
-		for(dieNo=0 ; dieNo < USER_DIES ; dieNo ++)
-		{
-			mtInfoMapPtr->mtInfo[dieNo].startBlock = mtInfoMapPtr->mtInfo[dieNo].curBlock = START_BLOCK_NO_OF_MAPPING_TABLE_PER_DIE;	// 0 for bbt, 1 for sys meta
-			mtInfoMapPtr->mtInfo[dieNo].startPage = mtInfoMapPtr->mtInfo[dieNo].curPage = PlsbPage2VpageTranslation(START_PAGE_NO_OF_MAPPING_TABLE_BLOCK);
-		}
-	}
-
-	tempMtBufEntrySize = BYTES_PER_DATA_REGION_OF_PAGE;
-	for (dieNo = 0 ; dieNo < USER_DIES ; dieNo ++ )
-	{
-		tempMtBufAddr[dieNo] = tempBufAddr + dieNo * DATA_SIZE_OF_MAPPING_TABLE_PER_DIE; //tempBufAddr == LOGICAL_SLICE_MAP_ADDR
-	}
-
-	ReadMappingTable(tempMtBufAddr, tempMtBufEntrySize);
-
-
-	for(sliceNo=0; sliceNo<SLICES_PER_SSD ; sliceNo++)
-	{
-		virtualSliceMapPtr->virtualSlice[sliceNo].logicalSliceAddr = LSA_NONE;
-	}
-
-	mtMarker = POR_MAKER_IDLE;
-	for (sliceNo=0 ; sliceNo<SLICES_PER_SSD; sliceNo++)
-	{
-		if(	logicalSliceMapPtr->logicalSlice[sliceNo].virtualSliceAddr >= 0 &&
-				logicalSliceMapPtr->logicalSlice[sliceNo].virtualSliceAddr < SLICES_PER_SSD)
-		{
-			virtualSliceMapPtr->virtualSlice[logicalSliceMapPtr->logicalSlice[sliceNo].virtualSliceAddr].logicalSliceAddr = sliceNo;
-		}
-		else if (logicalSliceMapPtr->logicalSlice[sliceNo].virtualSliceAddr != VSA_NONE)
-		{
-			xil_printf("mapping table of lsa %d does not exist %d\r\n", sliceNo, logicalSliceMapPtr->logicalSlice[sliceNo].virtualSliceAddr);
-			mtMarker = POR_MAKER_TRIGGER;
-			break;
-		}
-	}
-
-
-	// 만일 NAND에 mapping table이 존재하지 않는 경우
-	if(mtMarker == POR_MAKER_TRIGGER) {
+		xil_printf("init mapping table \r\n");
 		for (dieNo = 0 ; dieNo < USER_DIES ; dieNo ++ ) {
 			mtInfoMapPtr->mtInfo[dieNo].curBlock = mtInfoMapPtr->mtInfo[dieNo].startBlock = START_BLOCK_NO_OF_MAPPING_TABLE_PER_DIE;
 			mtInfoMapPtr->mtInfo[dieNo].curPage = mtInfoMapPtr->mtInfo[dieNo].startPage = START_PAGE_NO_OF_MAPPING_TABLE_BLOCK;
 		}
 		InitSliceMap();
-		UpdateMappingTable(LOGICAL_SLICE_MAP_ADDR);
+		// Debugging Code
+		/*UpdateMappingTable(LOGICAL_SLICE_MAP_ADDR);
 		ReadMappingTable(tempMtBufAddr, tempMtBufEntrySize);
 		sysMetaMaker = POR_MAKER_TRIGGER;
 		for(sliceNo=0; sliceNo<SLICES_PER_SSD ; sliceNo++)
 		{
 			virtualSliceMapPtr->virtualSlice[sliceNo].logicalSliceAddr = LSA_NONE;
 		}
-		// Debugging Code
-		/*mtMarker = POR_MAKER_IDLE;
+		mtMarker = POR_MAKER_IDLE;
 		for (sliceNo=0 ; sliceNo<SLICES_PER_SSD; sliceNo++)
 		{
 			if(	logicalSliceMapPtr->logicalSlice[sliceNo].virtualSliceAddr >= 0 &&
@@ -599,7 +580,47 @@ void RecoverMappingTable(unsigned int tempBufAddr)
 				mtMarker = POR_MAKER_TRIGGER;
 			}
 		}*/
+	} else {
+		tempMtBufEntrySize = BYTES_PER_DATA_REGION_OF_PAGE;
+		for (dieNo = 0 ; dieNo < USER_DIES ; dieNo ++ )
+		{
+			tempMtBufAddr[dieNo] = tempBufAddr + dieNo * DATA_SIZE_OF_MAPPING_TABLE_PER_DIE; //tempBufAddr == LOGICAL_SLICE_MAP_ADDR
+		}
+
+		ReadMappingTable(tempMtBufAddr, tempMtBufEntrySize);
+
+
+		for(sliceNo=0; sliceNo<SLICES_PER_SSD ; sliceNo++)
+		{
+			virtualSliceMapPtr->virtualSlice[sliceNo].logicalSliceAddr = LSA_NONE;
+		}
+
+		mtMarker = POR_MAKER_IDLE;
+		for (sliceNo=0 ; sliceNo<SLICES_PER_SSD; sliceNo++)
+		{
+			if(	logicalSliceMapPtr->logicalSlice[sliceNo].virtualSliceAddr >= 0 &&
+					logicalSliceMapPtr->logicalSlice[sliceNo].virtualSliceAddr < SLICES_PER_SSD)
+			{
+				virtualSliceMapPtr->virtualSlice[logicalSliceMapPtr->logicalSlice[sliceNo].virtualSliceAddr].logicalSliceAddr = sliceNo;
+			}
+			else if (logicalSliceMapPtr->logicalSlice[sliceNo].virtualSliceAddr != VSA_NONE)
+			{
+				xil_printf("mapping table of lsa %d does not exist %d\r\n", sliceNo, logicalSliceMapPtr->logicalSlice[sliceNo].virtualSliceAddr);
+				mtMarker = POR_MAKER_TRIGGER;
+				break;
+			}
+		}
+
+		// 만일 NAND에 mapping table이 존재하지 않는 경우
+		if(mtMarker == POR_MAKER_TRIGGER) {
+			for (dieNo = 0 ; dieNo < USER_DIES ; dieNo ++ ) {
+				mtInfoMapPtr->mtInfo[dieNo].curBlock = mtInfoMapPtr->mtInfo[dieNo].startBlock = START_BLOCK_NO_OF_MAPPING_TABLE_PER_DIE;
+				mtInfoMapPtr->mtInfo[dieNo].curPage = mtInfoMapPtr->mtInfo[dieNo].startPage = START_PAGE_NO_OF_MAPPING_TABLE_BLOCK;
+			}
+			InitSliceMap();
+		}
 	}
+
 }
 
 void UpdateMappingTable(unsigned int tempBufAddr)

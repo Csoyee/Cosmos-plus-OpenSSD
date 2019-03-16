@@ -49,7 +49,7 @@
  *
  * - VIRTUAL_BLOCK_MAP_PER_DIE		[size: 11.5 Bytes * 8K ==> 92KB ]: free block list, currentPage, eraseCnt 등을 가지고 있음.
  * - VIRTUAL_DIE_MAP_PER_DIE		[size: 12 Bytes]
- * - MAPPING_TABLE_INFO_MAP_PER_DIE	[size: 8 Bytes]
+ * - MAPPING_TABLE_INFO_MAP_PER_DIE	[size: 9 Bytes]
  *
  * > virtualDieMapPtr[dieNo]
  * > virtualBlockMapPtr[dieNo][block loop..]
@@ -74,6 +74,8 @@
 
 
 typedef struct _MAPPING_TABLE_INFO_ENTRY{
+	unsigned int format : 1;
+	unsigned int reserved : 7;
 	unsigned int curBlock : 16;
 	unsigned int curPage : 16;
 	unsigned int startBlock : 16;
@@ -87,7 +89,6 @@ typedef struct _MAPPING_TABLE_INFO_MAP{
 
 
 extern P_MAPPING_TABLE_INFO_MAP mtInfoMapPtr;
-extern int sysMetaMaker ;
 
 void UpdateMappingTable(unsigned int tempBufAddr);
 void RecoverMappingTable(unsigned int tempBufAddr);

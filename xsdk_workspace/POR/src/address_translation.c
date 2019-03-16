@@ -74,8 +74,6 @@ void InitAddressMap()
 	bbtInfoMapPtr = (P_BAD_BLOCK_TABLE_INFO_MAP) BAD_BLOCK_TABLE_INFO_MAP_ADDR;
 	mtInfoMapPtr = (P_MAPPING_TABLE_INFO_MAP) MAPPING_TABLE_INFO_MAP_ADDR;
 
-	sysMetaMaker = POR_MAKER_IDLE;
-
 	//init phyblockMap
 	for(dieNo=0 ; dieNo<USER_DIES ; dieNo++)
 	{
@@ -88,8 +86,8 @@ void InitAddressMap()
 
 	sliceAllocationTargetDie = FindDieForFreeSliceAllocation();
 
-	RecoverMappingTable(LOGICAL_SLICE_MAP_ADDR);
 	//InitSliceMap();
+	RecoverMappingTable(LOGICAL_SLICE_MAP_ADDR);
 
 	InitBlockDieMap();
 }
@@ -613,8 +611,8 @@ void InitBlockDieMap()
 	}
 
 
-	InitDieMap();
-	//RecoverDieMap();
+	//InitDieMap();
+	RecoverDieMap();
 
 	//make bad block table
 	RecoverBadBlockTable(RESERVED_DATA_BUFFER_BASE_ADDR);
@@ -629,15 +627,15 @@ void InitBlockDieMap()
 
 	RemapBadBlock();
 
-	InitBlockMap();
-	//RecoverBlockMap();
+	//InitBlockMap();
+	RecoverBlockMap();
 
 	if(eraseFlag)
 		EraseUserBlockSpace();
 
 	InitCurrentBlockOfDieMap();
 
-	if(sysMetaMaker == POR_MAKER_TRIGGER)
+	if(mtInfoMapPtr->mtInfo[0].format == POR_MAKER_TRIGGER )
 		UpdateSystemMeta();
 }
 
