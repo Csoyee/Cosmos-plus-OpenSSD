@@ -16,13 +16,15 @@
 
 void ReadSystemMeta(unsigned int tempSysBufAddr[], unsigned int tempSysBufEntrySize, int dataSize, int page)
 {
-	unsigned int tempPage, reqSlotTag, dieNo, blockNo;
+	unsigned int tempPage, reqSlotTag, dieNo, blockNo; //, rowAddr;
 	int loop;
 
 	loop = 0;
-	tempPage = page; 	//Meta data is saved at lsb pages
+	tempPage = page;
 
 	blockNo = 1;
+
+	xil_printf("dataSize : %d\r\n", dataSize);
 
 	while(dataSize>0)
 	{
@@ -47,9 +49,18 @@ void ReadSystemMeta(unsigned int tempSysBufAddr[], unsigned int tempSysBufEntryS
 			reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalCh = Vdie2PchTranslation(dieNo);
 			reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalWay = Vdie2PwayTranslation(dieNo);
 			reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalBlock = blockNo;
-			reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalPage = tempPage;
+			reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalPage = Vpage2PlsbPageTranslation(tempPage);
+			//reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalPage =  tempPage;
 
 			SelectLowLevelReqQ(reqSlotTag);
+/*
+ * 	for debugging
+			if(dieNo == 0 )
+			{
+				rowAddr = GenerateNandRowAddr(reqSlotTag);
+				xil_printf("rowAddr: %x\r\n", rowAddr);
+			}
+ */
 		}
 
 		tempPage++;
@@ -57,18 +68,18 @@ void ReadSystemMeta(unsigned int tempSysBufAddr[], unsigned int tempSysBufEntryS
 		dataSize -= BYTES_PER_DATA_REGION_OF_PAGE;
 	}
 
+	SyncAllLowLevelReqDone();
 
 }
 
 
 void SaveSystemMeta(unsigned int tempSysBufAddr[], unsigned int tempSysBufEntrySize, int dataSize, int page)
 {
-	unsigned int dieNo, reqSlotTag, blockNo;
+	unsigned int dieNo, reqSlotTag, blockNo; //, rowAddr;
 	int loop, tempPage;
 
 	loop = 0;
-	dataSize = DATA_SIZE_OF_BAD_BLOCK_TABLE_PER_DIE;
-	tempPage = page;	//Meta data is saved at lsb pages
+	tempPage = page;
 	blockNo = 1;
 
 	while(dataSize>0)
@@ -94,12 +105,21 @@ void SaveSystemMeta(unsigned int tempSysBufAddr[], unsigned int tempSysBufEntryS
 			reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalCh = Vdie2PchTranslation(dieNo);
 			reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalWay = Vdie2PwayTranslation(dieNo);
 			reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalBlock = blockNo;
-			reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalPage =  tempPage;
+			reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalPage =  Vpage2PlsbPageTranslation(tempPage);
+			//reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalPage =  tempPage;
 
 			SelectLowLevelReqQ(reqSlotTag);
+/*
+ * 	for debugging
+			if(dieNo == 0 )
+			{
+				rowAddr = GenerateNandRowAddr(reqSlotTag);
+				xil_printf("rowAddr: %x\r\n", rowAddr);
+			}
+*/
 		}
-		loop++;
 		tempPage++;
+		loop++;
 		dataSize -= BYTES_PER_DATA_REGION_OF_PAGE;
 	}
 
@@ -232,7 +252,7 @@ void RecoverDieMap()
 				break;
 			}
 			else if(virtualDieMapPtr->die[dieNo].freeBlockCnt > USER_BLOCKS_PER_DIE
-					|| virtualDieMapPtr->die[dieNo].freeBlockCnt < 0)
+					|| virtualDieMapPtr->die[dieNo].freeBlockCnt <= 0)
 			{
 				xil_printf("[DieMap]freeBlockCnt invalid %d (%d)\r\n",virtualDieMapPtr->die[dieNo].freeBlockCnt, dieNo);
 				marker = POR_MAKER_TRIGGER;
@@ -264,7 +284,6 @@ void UpdateDieMap()
 	{
 		dieUpdater = (VIRTUAL_DIE_ENTRY*) tempSysBufAddr[dieNo];
 		*dieUpdater = virtualDieMapPtr->die[dieNo];
-
 	}
 
 	SaveSystemMeta(tempSysBufAddr, tempSysEntrySize, DATA_SIZE_OF_DIE_MAP_PER_DIE, START_PAGE_NO_OF_DIE_MAP_BLOCK);
@@ -291,7 +310,7 @@ void RecoverMappingTableInfoMap()
 
 	for (dieNo = 0 ; dieNo < USER_DIES ; dieNo++)
 	{
-		mtUpdater = (MAPPING_TABLE_INFO_ENTRY*) tempSysBufAddr[dieNo];
+		mtUpdater = (MAPPING_TABLE_INFO_ENTRY*)(tempSysBufAddr[dieNo]);
 		mtInfoMapPtr->mtInfo[dieNo] = *mtUpdater;
 
 		if(mtInfoMapPtr->mtInfo[dieNo].curBlock < START_BLOCK_NO_OF_MAPPING_TABLE_PER_DIE
@@ -330,13 +349,10 @@ void RecoverMappingTableInfoMap()
 
 		mtInfoMapPtr->mtInfo[0].format = POR_MAKER_TRIGGER;
 
-		if( mtInfoMapPtr->mtInfo[0].format == POR_MAKER_TRIGGER )
+		for(dieNo=0 ; dieNo < USER_DIES ; dieNo ++)
 		{
-			for(dieNo=0 ; dieNo < USER_DIES ; dieNo ++)
-			{
-				mtInfoMapPtr->mtInfo[dieNo].startBlock = mtInfoMapPtr->mtInfo[dieNo].curBlock = START_BLOCK_NO_OF_MAPPING_TABLE_PER_DIE;	// 0 for bbt, 1 for sys meta
-				mtInfoMapPtr->mtInfo[dieNo].startPage = mtInfoMapPtr->mtInfo[dieNo].curPage = PlsbPage2VpageTranslation(START_PAGE_NO_OF_MAPPING_TABLE_BLOCK);
-			}
+			mtInfoMapPtr->mtInfo[dieNo].startBlock = mtInfoMapPtr->mtInfo[dieNo].curBlock = START_BLOCK_NO_OF_MAPPING_TABLE_PER_DIE;	// 0 for bbt, 1 for sys meta
+			mtInfoMapPtr->mtInfo[dieNo].startPage = mtInfoMapPtr->mtInfo[dieNo].curPage = PlsbPage2VpageTranslation(START_PAGE_NO_OF_MAPPING_TABLE_BLOCK);
 		}
 	}
 }
@@ -377,9 +393,12 @@ void UpdateSystemMeta()
 	/*
 	 * test code for check
 	 *
-	 *	RecoverMappingTableInfoMap();
-	 *	RecoverDieMap();
-	 *	RecoverBlockMap();
+	 *		RecoverMappingTableInfoMap();
+	 * 		mtInfoMapPtr->mtInfo[0].format = POR_MAKER_IDLE;
+	 * 		xil_printf("recover die map\r\n");
+	 * 		RecoverDieMap();
+	 *		xil_printf("recover block map\r\n");
+	 *		RecoverBlockMap();
 	 * */
 }
 

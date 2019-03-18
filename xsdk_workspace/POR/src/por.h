@@ -49,7 +49,7 @@
  *
  * - VIRTUAL_BLOCK_MAP_PER_DIE		[size: 11.5 Bytes * 8K ==> 92KB ]: free block list, currentPage, eraseCnt 등을 가지고 있음.
  * - VIRTUAL_DIE_MAP_PER_DIE		[size: 12 Bytes]
- * - MAPPING_TABLE_INFO_MAP_PER_DIE	[size: 9 Bytes]
+ * - MAPPING_TABLE_INFO_MAP_PER_DIE	[size: 10 Bytes]
  *
  * > virtualDieMapPtr[dieNo]
  * > virtualBlockMapPtr[dieNo][block loop..]
@@ -65,9 +65,9 @@
 #define DATA_SIZE_OF_BLOCK_MAP_PER_DIE	sizeof(VIRTUAL_BLOCK_ENTRY) * USER_BLOCKS_PER_DIE
 #define USED_PAGES_FOR_BLOCK_MAP_PER_DIE	(DATA_SIZE_OF_BLOCK_MAP_PER_DIE / BYTES_PER_DATA_REGION_OF_PAGE + 1)
 
-#define START_PAGE_NO_OF_MT_INFO_BLOCK		(1)		//각 block의 0번 페이지는 bad block mark page.
-#define START_PAGE_NO_OF_DIE_MAP_BLOCK		(START_PAGE_NO_OF_MT_INFO_BLOCK + 1)
-#define START_PAGE_NO_OF_BLOCK_MAP_BLOCK	(START_PAGE_NO_OF_DIE_MAP_BLOCK + 1)		// 96K / 16K + 1 = 7 pages
+#define START_PAGE_NO_OF_MT_INFO_BLOCK		PlsbPage2VpageTranslation(1)		//각 block의 0번 페이지는 bad block mark page.
+#define START_PAGE_NO_OF_DIE_MAP_BLOCK		(START_PAGE_NO_OF_MT_INFO_BLOCK + USED_PAGES_FOR_MT_INFO_PER_DIE)
+#define START_PAGE_NO_OF_BLOCK_MAP_BLOCK	(START_PAGE_NO_OF_DIE_MAP_BLOCK + USED_PAGES_FOR_DIE_MAP_PER_DIE)		// 96K / 16K + 1 = 7 pages
 #define END_PAGE_NO_OF_BLOCK_MAP_BLOCK		(START_PAGE_NO_OF_BLOCK_MAP_BLOCK + USED_PAGES_FOR_BLOCK_MAP_PER_DIE - 1)
 
 /////////////////////////////////////////////
@@ -75,7 +75,7 @@
 
 typedef struct _MAPPING_TABLE_INFO_ENTRY{
 	unsigned int format : 1;
-	unsigned int reserved : 7;
+	unsigned int reserved : 31;
 	unsigned int curBlock : 16;
 	unsigned int curPage : 16;
 	unsigned int startBlock : 16;

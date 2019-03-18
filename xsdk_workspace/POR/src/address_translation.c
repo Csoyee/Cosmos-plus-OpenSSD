@@ -610,7 +610,6 @@ void InitBlockDieMap()
 		eraseFlag = 0;
 	}
 
-
 	//InitDieMap();
 	RecoverDieMap();
 
