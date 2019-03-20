@@ -13,6 +13,46 @@
 //   - manage l2v mapping table information in NAND device
 //////////////////////////////////////////////////////////////////////////////////
 
+void FlushDataBufEntry()
+{
+	unsigned int reqSlotTag, bufEntry, virtualSliceAddr;
+	int index;
+
+	for(index = 0 ; index < AVAILABLE_DATA_BUFFER_ENTRY_COUNT ; index ++)
+	{
+		bufEntry = dataBufHashTablePtr->dataBufHash[index].headEntry;
+
+		while(bufEntry != DATA_BUF_NONE)
+		{
+			if(dataBufMapPtr->dataBuf[bufEntry].dirty == DATA_BUF_DIRTY)
+			{
+				reqSlotTag = GetFromFreeReqQ();
+				virtualSliceAddr = AddrTransWrite (dataBufMapPtr->dataBuf[bufEntry].logicalSliceAddr);
+
+				reqPoolPtr->reqPool[reqSlotTag].reqType = REQ_TYPE_NAND;
+				reqPoolPtr->reqPool[reqSlotTag].reqCode = REQ_CODE_WRITE;
+				reqPoolPtr->reqPool[reqSlotTag].logicalSliceAddr = dataBufMapPtr->dataBuf[bufEntry].logicalSliceAddr;
+				reqPoolPtr->reqPool[reqSlotTag].reqOpt.dataBufFormat = REQ_OPT_DATA_BUF_ENTRY;
+				reqPoolPtr->reqPool[reqSlotTag].reqOpt.nandAddr = REQ_OPT_NAND_ADDR_VSA;
+				reqPoolPtr->reqPool[reqSlotTag].reqOpt.nandEcc = REQ_OPT_NAND_ECC_ON;
+				reqPoolPtr->reqPool[reqSlotTag].reqOpt.nandEccWarning = REQ_OPT_NAND_ECC_WARNING_ON;
+				reqPoolPtr->reqPool[reqSlotTag].reqOpt.rowAddrDependencyCheck = REQ_OPT_ROW_ADDR_DEPENDENCY_CHECK;
+				reqPoolPtr->reqPool[reqSlotTag].reqOpt.blockSpace = REQ_OPT_BLOCK_SPACE_MAIN;
+				reqPoolPtr->reqPool[reqSlotTag].dataBufInfo.entry = bufEntry;
+				UpdateDataBufEntryInfoBlockingReq(bufEntry, reqSlotTag);
+				reqPoolPtr->reqPool[reqSlotTag].nandInfo.virtualSliceAddr = virtualSliceAddr;
+
+				SelectLowLevelReqQ(reqSlotTag);
+
+				dataBufMapPtr->dataBuf[bufEntry].dirty = DATA_BUF_CLEAN;
+
+				bufEntry = dataBufMapPtr->dataBuf[bufEntry].hashNextEntry;
+			}
+		}
+	}
+
+	SyncAllLowLevelReqDone();
+}
 
 void ReadSystemMeta(unsigned int tempSysBufAddr[], unsigned int tempSysBufEntrySize, int dataSize, int page)
 {
@@ -23,8 +63,6 @@ void ReadSystemMeta(unsigned int tempSysBufAddr[], unsigned int tempSysBufEntryS
 	tempPage = page;
 
 	blockNo = 1;
-
-	xil_printf("dataSize : %d\r\n", dataSize);
 
 	while(dataSize>0)
 	{
@@ -50,7 +88,6 @@ void ReadSystemMeta(unsigned int tempSysBufAddr[], unsigned int tempSysBufEntryS
 			reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalWay = Vdie2PwayTranslation(dieNo);
 			reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalBlock = blockNo;
 			reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalPage = Vpage2PlsbPageTranslation(tempPage);
-			//reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalPage =  tempPage;
 
 			SelectLowLevelReqQ(reqSlotTag);
 /*
@@ -106,7 +143,6 @@ void SaveSystemMeta(unsigned int tempSysBufAddr[], unsigned int tempSysBufEntryS
 			reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalWay = Vdie2PwayTranslation(dieNo);
 			reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalBlock = blockNo;
 			reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalPage =  Vpage2PlsbPageTranslation(tempPage);
-			//reqPoolPtr->reqPool[reqSlotTag].nandInfo.physicalPage =  tempPage;
 
 			SelectLowLevelReqQ(reqSlotTag);
 /*
@@ -179,7 +215,6 @@ void RecoverBlockMap()
 
 		if (marker == POR_MAKER_TRIGGER)
 		{
-	//		sysMetaMaker = POR_MAKER_TRIGGER;
 			xil_printf("Recover Block Map Fail \r\n");
 		}
 	}
@@ -262,7 +297,6 @@ void RecoverDieMap()
 
 		if (marker == POR_MAKER_TRIGGER)
 		{
-	//		sysMetaMaker = POR_MAKER_TRIGGER;
 			xil_printf("Recover Die Map Fail \r\n");
 		}
 	}
