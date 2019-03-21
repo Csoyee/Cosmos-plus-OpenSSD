@@ -45,7 +45,6 @@
 #define BLOCK_NO_OF_SYSTEM_META	1
 
 /*
- * TODO: 추가적으로 저장해야하는 system metadata
  *
  * - VIRTUAL_BLOCK_MAP_PER_DIE		[size: 11.5 Bytes * 8K ==> 92KB ]: free block list, currentPage, eraseCnt 등을 가지고 있음.
  * - VIRTUAL_DIE_MAP_PER_DIE		[size: 12 Bytes]
@@ -95,6 +94,7 @@ typedef struct _MAPPING_TABLE_INFO_MAP{
 
 extern P_MAPPING_TABLE_INFO_MAP mtInfoMapPtr;
 
+void FlushDataBufEntry();
 void UpdateMappingTable(unsigned int tempBufAddr);
 void RecoverMappingTable(unsigned int tempBufAddr);
 void SaveMappingTable(unsigned int tempMtBufAddr[], unsigned int tempMtBufEntrySize);

@@ -646,6 +646,7 @@ void IssueNandReq(unsigned int chNo, unsigned int wayNo)
 	void* spareDataBufAddr;
 	unsigned int* errorInfo;
 	unsigned int* completion;
+	unsigned int* lsnMarker;
 
 	reqSlotTag  = nandReqQ[chNo][wayNo].headReq;
 	rowAddr = GenerateNandRowAddr(reqSlotTag);
@@ -673,6 +674,13 @@ void IssueNandReq(unsigned int chNo, unsigned int wayNo)
 	else if(reqPoolPtr->reqPool[reqSlotTag].reqCode == REQ_CODE_WRITE)
 	{
 		dieStateTablePtr->dieState[chNo][wayNo].reqStatusCheckOpt = REQ_STATUS_CHECK_OPT_CHECK;
+
+		// TODO: spareDataBufferAddr ¿¡ logicalSliceAddr ÀúÀå. (for POR) -- need debugging
+		if (reqPoolPtr->reqPool[reqSlotTag].reqType == REQ_OPT_DATA_BUF_ENTRY)
+		{
+			lsnMarker = (unsigned int*)spareDataBufAddr;
+			*lsnMarker = reqPoolPtr->reqPool[reqSlotTag].logicalSliceAddr;
+		}
 
 		V2FProgramPageAsync(chCtlReg[chNo], wayNo, rowAddr, dataBufAddr, spareDataBufAddr);
 	}

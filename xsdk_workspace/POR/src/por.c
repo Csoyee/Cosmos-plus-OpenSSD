@@ -693,10 +693,6 @@ void RecoverMappingTable(unsigned int tempBufAddr)
 	unsigned int mtMarker, dieNo, tempMtBufEntrySize, sliceNo;
 	unsigned int tempMtBufAddr[USER_DIES];
 
-	/*
-	 * TODO: NAND로부터 mapping table을 읽어온다.
-	 * - NOTE: 모든 mapping table을 init 할 때 읽어오는 것은 high overhead (metadata로 NAND가 flush 된 상태인지 가리키는 데이터를 관리해서 넣기?)
-	 * */
 
 	RecoverMappingTableInfoMap();
 
