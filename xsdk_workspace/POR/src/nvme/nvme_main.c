@@ -141,7 +141,7 @@ void nvme_main()
 				//flush grown bad block info
 				UpdateBadBlockTableForGrownBadBlock(RESERVED_DATA_BUFFER_BASE_ADDR);
 
-				// TODO: for POR in memory mapping 정보 등을 NAND에 기록함
+				// TODO: data buffer flush --> mapping table flush --> meta data flush
 
 				xil_printf("\r\nNVMe shutdown!!!\r\n");
 			}

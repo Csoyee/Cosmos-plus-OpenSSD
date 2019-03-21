@@ -50,25 +50,30 @@
  * - VIRTUAL_BLOCK_MAP_PER_DIE		[size: 11.5 Bytes * 8K ==> 92KB ]: free block list, currentPage, eraseCnt 등을 가지고 있음.
  * - VIRTUAL_DIE_MAP_PER_DIE		[size: 12 Bytes]
  * - MAPPING_TABLE_INFO_MAP_PER_DIE	[size: 10 Bytes]
+ * - GC_VICTIM_MAP_PER_DIE			[size: 4 Bytes * 129 ==> 516 Bytes]
  *
  * > virtualDieMapPtr[dieNo]
  * > virtualBlockMapPtr[dieNo][block loop..]
  * > mtInfoMapPtr[dieNo]
+ * > gcVictimMapPtr[dieNo][invalidSliceCnt]
  *
  * - Slice 16K (page1: mapping table info map, page2: die map, page 3-8: block map)
  * */
 
-#define DATA_SIZE_OF_MT_INFO_PER_DIE	sizeof(MAPPING_TABLE_INFO_ENTRY)
-#define USED_PAGES_FOR_MT_INFO_PER_DIE	(DATA_SIZE_OF_MT_INFO_PER_DIE / BYTES_PER_DATA_REGION_OF_PAGE + 1)
-#define DATA_SIZE_OF_DIE_MAP_PER_DIE	sizeof(VIRTUAL_DIE_ENTRY)
-#define USED_PAGES_FOR_DIE_MAP_PER_DIE	(DATA_SIZE_OF_DIE_MAP_PER_DIE / BYTES_PER_DATA_REGION_OF_PAGE + 1)
-#define DATA_SIZE_OF_BLOCK_MAP_PER_DIE	sizeof(VIRTUAL_BLOCK_ENTRY) * USER_BLOCKS_PER_DIE
+#define DATA_SIZE_OF_MT_INFO_PER_DIE		sizeof(MAPPING_TABLE_INFO_ENTRY)
+#define USED_PAGES_FOR_MT_INFO_PER_DIE		(DATA_SIZE_OF_MT_INFO_PER_DIE / BYTES_PER_DATA_REGION_OF_PAGE + 1)
+#define DATA_SIZE_OF_DIE_MAP_PER_DIE		sizeof(VIRTUAL_DIE_ENTRY)
+#define USED_PAGES_FOR_DIE_MAP_PER_DIE		(DATA_SIZE_OF_DIE_MAP_PER_DIE / BYTES_PER_DATA_REGION_OF_PAGE + 1)
+#define DATA_SIZE_OF_BLOCK_MAP_PER_DIE		sizeof(VIRTUAL_BLOCK_ENTRY) * USER_BLOCKS_PER_DIE
 #define USED_PAGES_FOR_BLOCK_MAP_PER_DIE	(DATA_SIZE_OF_BLOCK_MAP_PER_DIE / BYTES_PER_DATA_REGION_OF_PAGE + 1)
+#define DATA_SIZE_OF_GC_MAP_PER_DIE			sizeof(GC_VICTIM_LIST_ENTRY) * (SLICES_PER_BLOCK + 1)
+#define USED_PAGES_FOR_GC_MAP_PER_DIE		(DATA_SIZE_OF_GC_MAP_PER_DIE / BYTES_PER_DATA_REGION_OF_PAGE + 1)
 
 #define START_PAGE_NO_OF_MT_INFO_BLOCK		PlsbPage2VpageTranslation(1)		//각 block의 0번 페이지는 bad block mark page.
 #define START_PAGE_NO_OF_DIE_MAP_BLOCK		(START_PAGE_NO_OF_MT_INFO_BLOCK + USED_PAGES_FOR_MT_INFO_PER_DIE)
 #define START_PAGE_NO_OF_BLOCK_MAP_BLOCK	(START_PAGE_NO_OF_DIE_MAP_BLOCK + USED_PAGES_FOR_DIE_MAP_PER_DIE)		// 96K / 16K + 1 = 7 pages
-#define END_PAGE_NO_OF_BLOCK_MAP_BLOCK		(START_PAGE_NO_OF_BLOCK_MAP_BLOCK + USED_PAGES_FOR_BLOCK_MAP_PER_DIE - 1)
+#define START_PAGE_NO_OF_GC_MAP_BLOCK		(START_PAGE_NO_OF_BLOCK_MAP_BLOCK + USED_PAGES_FOR_BLOCK_MAP_PER_DIE)
+#define END_PAGE_NO_OF_SYS_META_BLOCK		(START_PAGE_NO_OF_GC_MAP_BLOCK + USED_PAGES_FOR_GC_MAP_PER_DIE - 1)
 
 /////////////////////////////////////////////
 
@@ -96,3 +101,5 @@ void SaveMappingTable(unsigned int tempMtBufAddr[], unsigned int tempMtBufEntryS
 void UpdateSystemMeta();
 void RecoverDieMap();
 void RecoverBlockMap();
+void UpdateGCMap();
+void RecoverGCMap();

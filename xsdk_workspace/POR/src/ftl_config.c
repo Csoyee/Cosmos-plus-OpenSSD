@@ -65,7 +65,11 @@ void InitFTL()
 	InitNandArray();
 	InitAddressMap();
 	InitDataBuf();
-	InitGcVictimMap();
+	//InitGcVictimMap();
+	RecoverGCMap();
+
+	if(mtInfoMapPtr->mtInfo[0].format == POR_MAKER_TRIGGER )
+		UpdateSystemMeta();
 
 	storageCapacity_L = (MB_PER_SSD - (MB_PER_MIN_FREE_BLOCK_SPACE + mbPerbadBlockSpace + MB_PER_OVER_PROVISION_BLOCK_SPACE)) * ((1024*1024) / BYTES_PER_NVME_BLOCK);
 

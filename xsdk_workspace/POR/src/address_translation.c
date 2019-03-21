@@ -634,8 +634,6 @@ void InitBlockDieMap()
 
 	InitCurrentBlockOfDieMap();
 
-	if(mtInfoMapPtr->mtInfo[0].format == POR_MAKER_TRIGGER )
-		UpdateSystemMeta();
 }
 
 unsigned int AddrTransRead(unsigned int logicalSliceAddr)

@@ -187,11 +187,93 @@ void EraseSystemMeta()
 	}
 }
 
+void RecoverGCMap()
+{
+	unsigned int dieNo, tempSysBaseAddr, tempSysEntrySize, marker, invalidSliceCnt;
+	unsigned int tempSysBufAddr[USER_DIES];
+	GC_VICTIM_LIST_ENTRY* gcUpdater;
+
+	if( mtInfoMapPtr->mtInfo[0].format == POR_MAKER_TRIGGER )
+	{
+		xil_printf("init GC map \r\n");
+		InitGcVictimMap();
+	} else
+	{
+		marker = POR_MAKER_IDLE;
+		// Read mapping_table_info_entry
+		tempSysBaseAddr = RESERVED_DATA_BUFFER_BASE_ADDR;
+		tempSysEntrySize = BYTES_PER_DATA_REGION_OF_PAGE + BYTES_PER_SPARE_REGION_OF_PAGE;
+		for(dieNo = 0; dieNo < USER_DIES; dieNo++)
+		{
+			tempSysBufAddr[dieNo] = tempSysBaseAddr + dieNo * USED_PAGES_FOR_GC_MAP_PER_DIE * tempSysEntrySize;
+		}
+
+		ReadSystemMeta(tempSysBufAddr, tempSysEntrySize, DATA_SIZE_OF_GC_MAP_PER_DIE, START_PAGE_NO_OF_GC_MAP_BLOCK);
+
+		for (dieNo = 0 ; dieNo < USER_DIES ; dieNo++)
+		{
+			for (invalidSliceCnt = 0 ; invalidSliceCnt <= SLICES_PER_BLOCK ; invalidSliceCnt ++)
+			{
+				gcUpdater = (GC_VICTIM_LIST_ENTRY*)tempSysBufAddr[dieNo] + invalidSliceCnt;
+				gcVictimMapPtr->gcVictimList[dieNo][invalidSliceCnt] = *gcUpdater;
+
+				if((gcVictimMapPtr->gcVictimList[dieNo][invalidSliceCnt].headBlock != BLOCK_NONE)
+						&& (gcVictimMapPtr->gcVictimList[dieNo][invalidSliceCnt].headBlock < 0
+							|| gcVictimMapPtr->gcVictimList[dieNo][invalidSliceCnt].headBlock > TOTAL_BLOCKS_PER_DIE))
+				{
+					xil_printf("[GCMap]tail block invalid %d (%d)\r\n", gcVictimMapPtr->gcVictimList[dieNo][invalidSliceCnt].headBlock, dieNo );
+					marker = POR_MAKER_TRIGGER;
+					break;
+				} else if ((gcVictimMapPtr->gcVictimList[dieNo][invalidSliceCnt].tailBlock != BLOCK_NONE)
+						&& (gcVictimMapPtr->gcVictimList[dieNo][invalidSliceCnt].tailBlock < 0
+							|| gcVictimMapPtr->gcVictimList[dieNo][invalidSliceCnt].tailBlock > TOTAL_BLOCKS_PER_DIE))
+				{
+					xil_printf("[GCMap]tail block invalid %d (%d)\r\n", gcVictimMapPtr->gcVictimList[dieNo][invalidSliceCnt].tailBlock, dieNo );
+					marker = POR_MAKER_TRIGGER;
+					break;
+				}
+			}
+			if(invalidSliceCnt != SLICES_PER_BLOCK + 1)
+				break;
+		}
+
+		if (marker == POR_MAKER_TRIGGER)
+		{
+			xil_printf("Recover GC Map Fail \r\n");
+		}
+	}
+}
+
+void UpdateGCMap()
+{
+	unsigned int dieNo, tempSysBaseAddr, tempSysEntrySize, invalidSliceCnt;
+	unsigned int tempSysBufAddr[USER_DIES];
+	GC_VICTIM_LIST_ENTRY* gcUpdater;
+
+	tempSysBaseAddr = RESERVED_DATA_BUFFER_BASE_ADDR;
+	tempSysEntrySize = BYTES_PER_DATA_REGION_OF_PAGE + BYTES_PER_SPARE_REGION_OF_PAGE;
+
+	for(dieNo = 0 ; dieNo < USER_DIES ; dieNo ++)
+		tempSysBufAddr[dieNo] = tempSysBaseAddr + dieNo * USED_PAGES_FOR_GC_MAP_PER_DIE * tempSysEntrySize;
+
+	for (dieNo = 0 ; dieNo < USER_DIES ; dieNo++)
+	{
+		for (invalidSliceCnt = 0 ; invalidSliceCnt < SLICES_PER_BLOCK + 1 ; invalidSliceCnt ++)
+		{
+			gcUpdater = (GC_VICTIM_LIST_ENTRY*) tempSysBufAddr[dieNo] + invalidSliceCnt;
+			*gcUpdater = gcVictimMapPtr->gcVictimList[dieNo][invalidSliceCnt];
+		}
+	}
+
+	SaveSystemMeta(tempSysBufAddr, tempSysEntrySize, DATA_SIZE_OF_GC_MAP_PER_DIE, START_PAGE_NO_OF_GC_MAP_BLOCK);
+
+}
+
+
 void RecoverBlockMap()
 {
 	unsigned int dieNo, tempSysEntrySize, marker;
 	unsigned int tempSysBufAddr[USER_DIES];
-
 
 	if( mtInfoMapPtr->mtInfo[0].format == POR_MAKER_TRIGGER )
 	{
@@ -210,8 +292,20 @@ void RecoverBlockMap()
 
 		ReadSystemMeta(tempSysBufAddr, tempSysEntrySize, DATA_SIZE_OF_BLOCK_MAP_PER_DIE, START_PAGE_NO_OF_BLOCK_MAP_BLOCK);
 
-
-		// TODO: Block Map read 한 것이 valid 한 지 어떻게 체크 할지
+		for(dieNo = 0 ; dieNo < USER_DIES ; dieNo++)
+		{
+			if (virtualBlockMapPtr->block[dieNo][0].bad != BLOCK_STATE_NORMAL && virtualBlockMapPtr->block[dieNo][0].bad != BLOCK_STATE_BAD)
+			{
+				xil_printf("[BlockMap]bad flag invalid %d (%d)\r\n", virtualBlockMapPtr->block[dieNo][0].bad, dieNo );
+				marker = POR_MAKER_TRIGGER;
+				break;
+			} else if (virtualBlockMapPtr->block[dieNo][0].currentPage < 0 || virtualBlockMapPtr->block[dieNo][0].currentPage > USER_PAGES_PER_BLOCK)
+			{
+				xil_printf("[BlockMap]currentPage invalid %d (%d)\r\n", virtualBlockMapPtr->block[dieNo][0].currentPage, dieNo );
+				marker = POR_MAKER_TRIGGER;
+				break;
+			}
+		}
 
 		if (marker == POR_MAKER_TRIGGER)
 		{
@@ -423,6 +517,7 @@ void UpdateSystemMeta()
 	UpdateMappingTableInfoMap();
 	UpdateDieMap();
 	UpdateBlockMap();
+	UpdateGCMap();
 
 	/*
 	 * test code for check
@@ -433,6 +528,8 @@ void UpdateSystemMeta()
 	 * 		RecoverDieMap();
 	 *		xil_printf("recover block map\r\n");
 	 *		RecoverBlockMap();
+	 *		xil_printf("recover GC map \r\n");
+	 *		RecoverGCMap();
 	 * */
 }
 
