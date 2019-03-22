@@ -87,9 +87,7 @@ void ReqTransNvmeToSlice(unsigned int cmdSlotTag, unsigned int startLba, unsigne
 	loop = ((startLba % NVME_BLOCKS_PER_SLICE) + requestedNvmeBlock) / NVME_BLOCKS_PER_SLICE;
 
 	if(cmdCode == IO_NVM_SHARE)
-	{
-		tempLsa2 = sourceLba / NVME_BLOCKS_PER_SLICE;
-	} // SY add
+		tempLsa2 = sourceLba / NVME_BLOCKS_PER_SLICE; // SY add
 
 	if(cmdCode == IO_NVM_WRITE)
 		reqCode = REQ_CODE_WRITE;
@@ -117,14 +115,13 @@ void ReqTransNvmeToSlice(unsigned int cmdSlotTag, unsigned int startLba, unsigne
 	reqPoolPtr->reqPool[reqSlotTag].nvmeDmaInfo.nvmeBlockOffset = nvmeBlockOffset;
 	reqPoolPtr->reqPool[reqSlotTag].nvmeDmaInfo.numOfNvmeBlock = tempNumOfNvmeBlock;
 	if(cmdCode == IO_NVM_SHARE)
-	{
-		reqPoolPtr->reqPool[reqSlotTag].sourceSliceAddr = tempLsa2;
-	} // SY add
+		reqPoolPtr->reqPool[reqSlotTag].sourceSliceAddr = tempLsa2; // SY add
 
 	PutToSliceReqQ(reqSlotTag);
 
 	tempLsa++;
-	tempLsa2++; // SY add
+	if(cmdCode == IO_NVM_SHARE)
+		tempLsa2++; // SY add
 	transCounter++;
 	nvmeDmaStartIndex += tempNumOfNvmeBlock;
 
@@ -181,22 +178,6 @@ void ReqTransNvmeToSlice(unsigned int cmdSlotTag, unsigned int startLba, unsigne
 
 
 void DataShare (unsigned int originReqSlotTag) {
-	/*
-	 * TODO, REQ_TYPE_NAND로 만들어서 LowLevelReqQ 로 내림
-	 * NOTE, EvictDataBufEntry, DataReadFromNand 함수를 보면 일반적으로 해당 레벨에서 l2v, v2l mapping 정보를 수정함. SHARE도 해당 레벨에서 mapping 정보만 수정해도 되지 않을까?
-	 *
-	 * reqType = REQ_TYPE_NAND;
-	 * reqCode = SHARE;
-	 * nvmeCmdSlotTag = reqPoolPtr->reqPool[originReqSlotTag].nvmeCmdSlotTag;
-	 * logicalSliceAddr ?
-	 * reqOpt.dataBufFormat (no need)
-	 * reqOpt.nandAddr REQ_OPT_NAND_ADDR_VSA;
-	 * ...
-	 * nandInfo.virtualSliceAddr = logicalSliceMapPtr에서 vsa 받아옴.
-	 *
-	 * SelectLowLevelReqQ(reqSlotTag);
-	 *
-	 */
 
 	unsigned int sourceLsa, targetLsa;
 
@@ -205,6 +186,44 @@ void DataShare (unsigned int originReqSlotTag) {
 
 	logicalSliceMapPtr->logicalSlice[targetLsa].virtualSliceAddr = logicalSliceMapPtr->logicalSlice[sourceLsa].virtualSliceAddr;
 	// virtualSliceMapPtr은 어떻게 수정할지 ?
+}
+
+void FlushDataBufEntry(int originReqSlotTag)
+{
+	unsigned int reqSlotTag, virtualSliceAddr, logicalSliceAddr, dataBufEntry, targetSliceAddr;
+
+	dataBufEntry = reqPoolPtr->reqPool[originReqSlotTag].dataBufInfo.entry;
+	logicalSliceAddr = dataBufMapPtr->dataBuf[dataBufEntry].logicalSliceAddr;	// sourceLBA
+	targetSliceAddr = reqPoolPtr->reqPool[originReqSlotTag].logicalSliceAddr;	// targetLBA
+
+	if(dataBufMapPtr->dataBuf[dataBufEntry].dirty == DATA_BUF_DIRTY)
+	{
+		reqSlotTag = GetFromFreeReqQ();
+		virtualSliceAddr = AddrTransWrite(logicalSliceAddr);
+
+		reqPoolPtr->reqPool[reqSlotTag].reqType = REQ_TYPE_NAND;
+		reqPoolPtr->reqPool[reqSlotTag].reqCode = REQ_CODE_WRITE;
+		reqPoolPtr->reqPool[reqSlotTag].logicalSliceAddr = dataBufMapPtr->dataBuf[dataBufEntry].logicalSliceAddr;
+		reqPoolPtr->reqPool[reqSlotTag].reqOpt.dataBufFormat = REQ_OPT_DATA_BUF_ENTRY;
+		reqPoolPtr->reqPool[reqSlotTag].reqOpt.nandAddr = REQ_OPT_NAND_ADDR_VSA;
+		reqPoolPtr->reqPool[reqSlotTag].reqOpt.nandEcc = REQ_OPT_NAND_ECC_ON;
+		reqPoolPtr->reqPool[reqSlotTag].reqOpt.nandEccWarning = REQ_OPT_NAND_ECC_WARNING_ON;
+		reqPoolPtr->reqPool[reqSlotTag].reqOpt.rowAddrDependencyCheck = REQ_OPT_ROW_ADDR_DEPENDENCY_CHECK;
+		reqPoolPtr->reqPool[reqSlotTag].reqOpt.blockSpace = REQ_OPT_BLOCK_SPACE_MAIN;
+		reqPoolPtr->reqPool[reqSlotTag].dataBufInfo.entry = dataBufEntry;
+		UpdateDataBufEntryInfoBlockingReq(dataBufEntry, reqSlotTag);
+		reqPoolPtr->reqPool[reqSlotTag].nandInfo.virtualSliceAddr = virtualSliceAddr;
+
+		SelectLowLevelReqQ(reqSlotTag);
+
+		dataBufMapPtr->dataBuf[dataBufEntry].dirty = DATA_BUF_CLEAN;
+		logicalSliceMapPtr->logicalSlice[targetSliceAddr].virtualSliceAddr = virtualSliceAddr;
+		// TODO: v2l mapping 정보는 어떻게 처리할지?
+	} else
+	{
+		logicalSliceMapPtr->logicalSlice[targetSliceAddr].virtualSliceAddr = logicalSliceMapPtr->logicalSlice[logicalSliceAddr].virtualSliceAddr;
+		// TODO: v2l mapping 정보는 어떻게 처리할지?
+	}
 }
 
 void EvictDataBufEntry(unsigned int originReqSlotTag)
@@ -281,20 +300,19 @@ void ReqTransSliceToLowLevel()
 		{
 			/*
 			 * TODO, SHARE command 에 대한 로직 추가
-			 *
-			 * - 아직 lba2 physical mapping 안 되어있고 buffer에 있을 때는 어떻게 할지?
-			 * - buffer에 없을 때에는 DataReadFromNand, EvictDataBufEntry 같은 함수 만들어서 (임시 function: DataShare) low level request queue로 request 전달
 			 */
 			dataBufEntry = CheckDataBufHit(reqSlotTag);
 			if (dataBufEntry != DATA_BUF_FAIL)
 			{
-				// TODO data buffer hit, physical mapping이 안되어있는 상태, mapping 정보를 어떻게 수정할지?
+				reqPoolPtr->reqPool[reqSlotTag].dataBufInfo.entry = dataBufEntry;
+				FlushDataBufEntry(reqSlotTag);
 			}
 			else
 			{
-				// data buffer miss, TODO - NAND 접근은 할 필요 없이 mapping 정보만 수정 --> low level request queue로 request를 내려야 할까?
 				DataShare(reqSlotTag);
 			}
+			// NOTE: low level request queue 로 share request 내려야 하는지?
+			// TODO: completion 은 어떻게 보내주면 되는지?
 			continue;
 		}
 
@@ -475,7 +493,6 @@ unsigned int UpdateRowAddrDepTableForBufBlockedReq(unsigned int reqSlotTag)
 void SelectLowLevelReqQ(unsigned int reqSlotTag)
 {
 	unsigned int dieNo, chNo, wayNo, bufDepCheckReport, rowAddrDepCheckReport, rowAddrDepTableUpdateReport;
-	// TODO: NAND request 까지 내려가는 과정에서 request list 정보 (prevreq, nextreq)랑 queuetype만 바뀌므로 크게 수정할 필요 없음. [physical address 변환 과정은 l2pmap[lba2] 을 통해 vsa 받아와서 수행?]
 	bufDepCheckReport = CheckBufDep(reqSlotTag);
 	if(bufDepCheckReport == BUF_DEPENDENCY_REPORT_PASS)
 	{

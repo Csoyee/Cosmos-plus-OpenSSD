@@ -90,11 +90,11 @@ unsigned int CheckDataBufHit(unsigned int reqSlotTag)
 	unsigned int bufEntry, logicalSliceAddr;
 
 	logicalSliceAddr = reqPoolPtr->reqPool[reqSlotTag].logicalSliceAddr;
+
 	// SY ADD, share 에서는 source lsa에 대해서 확인 해야 함.
 	if (reqPoolPtr->reqPool[reqSlotTag].reqCode == REQ_CODE_SHARE)
-	{
 		logicalSliceAddr = reqPoolPtr->reqPool[reqSlotTag].sourceSliceAddr;
-	}
+
 	bufEntry = dataBufHashTablePtr->dataBufHash[FindDataBufHashTableEntry(logicalSliceAddr)].headEntry;
 
 	while(bufEntry != DATA_BUF_NONE)
