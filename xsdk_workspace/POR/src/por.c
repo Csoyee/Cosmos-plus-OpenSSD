@@ -522,15 +522,16 @@ void UpdateSystemMeta()
 	/*
 	 * test code for check
 	 *
-	 *		RecoverMappingTableInfoMap();
-	 * 		mtInfoMapPtr->mtInfo[0].format = POR_MAKER_IDLE;
-	 * 		xil_printf("recover die map\r\n");
-	 * 		RecoverDieMap();
-	 *		xil_printf("recover block map\r\n");
-	 *		RecoverBlockMap();
-	 *		xil_printf("recover GC map \r\n");
-	 *		RecoverGCMap();
-	 * */
+	RecoverMappingTableInfoMap();
+	mtInfoMapPtr->mtInfo[0].format = POR_MAKER_IDLE;
+	xil_printf("recover die map\r\n");
+	RecoverDieMap();
+	xil_printf("recover block map\r\n");
+	RecoverBlockMap();
+	xil_printf("recover GC map \r\n");
+	RecoverGCMap();
+
+	*/
 }
 
 void ReadMappingTable(unsigned int tempMtBufAddr[], unsigned int tempMtBufEntrySize)
@@ -692,7 +693,6 @@ void RecoverMappingTable(unsigned int tempBufAddr)
 
 	unsigned int mtMarker, dieNo, tempMtBufEntrySize, sliceNo;
 	unsigned int tempMtBufAddr[USER_DIES];
-
 
 	RecoverMappingTableInfoMap();
 

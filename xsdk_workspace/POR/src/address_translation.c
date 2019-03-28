@@ -600,14 +600,12 @@ void EraseUserBlockSpace()
 void InitBlockDieMap()
 {
 	unsigned int dieNo;
-	unsigned char eraseFlag = 1;
 	int i;
 
-	xil_printf("Press 'X' to re-make the bad block table.\r\n");
-	if (inbyte() == 'X')
+	//xil_printf("Press 'X' to re-make the bad block table.\r\n");
+	if ( mtInfoMapPtr->mtInfo[0].format == POR_MAKER_TRIGGER)
 	{
 		EraseTotalBlockSpace();
-		eraseFlag = 0;
 	}
 
 	//InitDieMap();
@@ -629,9 +627,12 @@ void InitBlockDieMap()
 	//InitBlockMap();
 	RecoverBlockMap();
 
-	if(eraseFlag)
+	/* don't need :
+	 * 1. mtInfo[0].format 이 POR_MAKER_TRIGGER 이면 EraseTotalBlockSpace call 해서 UserBlockSpace 까지 erase 됨
+	 * 2. mtInfo[0].format 이 POR_MAKER_IDLE 이면 NAND 에 user data 가 저장되어 있기 때문에 user space 지우면 안됨.
+	if(mtInfoMapPtr->mtInfo[0].format == POR_MAKER_TRIGGER)
 		EraseUserBlockSpace();
-
+	 */
 	InitCurrentBlockOfDieMap();
 
 }
