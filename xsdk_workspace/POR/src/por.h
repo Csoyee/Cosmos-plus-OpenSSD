@@ -94,7 +94,7 @@ typedef struct _MAPPING_TABLE_INFO_MAP{
 
 extern P_MAPPING_TABLE_INFO_MAP mtInfoMapPtr;
 
-void FlushDataBufEntry();
+void FlushDataBuffer();
 void UpdateMappingTable(unsigned int tempBufAddr);
 void RecoverMappingTable(unsigned int tempBufAddr);
 void SaveMappingTable(unsigned int tempMtBufAddr[], unsigned int tempMtBufEntrySize);

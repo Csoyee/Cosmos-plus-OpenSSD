@@ -142,7 +142,7 @@ void nvme_main()
 				UpdateBadBlockTableForGrownBadBlock(RESERVED_DATA_BUFFER_BASE_ADDR);
 
 				// TODO: data buffer flush --> mapping table flush --> meta data flush
-				FlushDataBufEntry();
+				FlushDataBuffer();
 				UpdateMappingTable(LOGICAL_SLICE_MAP_ADDR);
 				UpdateSystemMeta();
 

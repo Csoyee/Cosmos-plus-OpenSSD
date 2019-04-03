@@ -70,7 +70,6 @@ void InitFTL()
 
 	if(mtInfoMapPtr->mtInfo[0].format == POR_MAKER_TRIGGER )
 	{
-		FlushDataBufEntry();
 		UpdateMappingTable(LOGICAL_SLICE_MAP_ADDR);
 		UpdateSystemMeta();
 	}

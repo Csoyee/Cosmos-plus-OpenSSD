@@ -88,7 +88,6 @@ void InitAddressMap()
 
 	//InitSliceMap();
 	RecoverMappingTable(LOGICAL_SLICE_MAP_ADDR);
-
 	InitBlockDieMap();
 }
 
