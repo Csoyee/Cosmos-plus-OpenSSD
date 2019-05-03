@@ -31,7 +31,6 @@ void dummyWriteCommand()
 	PutToDataBufHashList(dataBufEntry);
 	dataBufMapPtr->dataBuf[dataBufEntry].dirty = DATA_BUF_DIRTY;
 
-
 	dataBufEntry = AllocateDataBuf();
 	dataBufMapPtr->dataBuf[dataBufEntry].logicalSliceAddr = 1035;
 	PutToDataBufHashList(dataBufEntry);

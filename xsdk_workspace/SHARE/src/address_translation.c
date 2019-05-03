@@ -623,11 +623,16 @@ void InitBlockDieMap()
 
 unsigned int AddrTransRead(unsigned int logicalSliceAddr)
 {
-	unsigned int virtualSliceAddr;
+	unsigned int virtualSliceAddr, tempSliceAddr;
 
 	if(logicalSliceAddr < SLICES_PER_SSD)
 	{
-		virtualSliceAddr = logicalSliceMapPtr->logicalSlice[logicalSliceAddr].virtualSliceAddr;
+		// FIXME, share bit check
+		tempSliceAddr = logicalSliceAddr;
+		while (getShareBit(logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr))
+			tempSliceAddr = getAddress(logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr);
+
+		virtualSliceAddr = logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr;
 
 		if(virtualSliceAddr != VSA_NONE)
 			return virtualSliceAddr;
@@ -755,23 +760,61 @@ unsigned int FindDieForFreeSliceAllocation()
 void InvalidateOldVsa(unsigned int logicalSliceAddr)
 {
 	unsigned int virtualSliceAddr, dieNo, blockNo;
+	unsigned int tempSliceAddr, shareFlag ;
 
-	virtualSliceAddr = logicalSliceMapPtr->logicalSlice[logicalSliceAddr].virtualSliceAddr;
+	tempSliceAddr = logicalSliceAddr;
+
+	shareFlag = 0;
+
+	while (getShareBit(logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr))
+	{
+		tempSliceAddr = getAddress(tempSliceAddr);
+		shareFlag = 1;
+	}
+
+	virtualSliceAddr = logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr;
 
 	if(virtualSliceAddr != VSA_NONE)
 	{
-		if(virtualSliceMapPtr->virtualSlice[virtualSliceAddr].logicalSliceAddr != logicalSliceAddr)
-			return;
+		if(shareFlag)
+		{
+			// FIXME, [invalidateOldVsa] share list 변경 내용 다시 확인하기
+			tempSliceAddr = virtualSliceMapPtr->virtualSlice[virtualSliceAddr].logicalSliceAddr;
 
-		dieNo = Vsa2VdieTranslation(virtualSliceAddr);
-		blockNo = Vsa2VblockTranslation(virtualSliceAddr);
+			if (getAddress(tempSliceAddr) == logicalSliceAddr)
+			{
+				virtualSliceMapPtr->virtualSlice[virtualSliceAddr].logicalSliceAddr = setShareBit(logicalSliceAddr);
+			} else
+			{
+				while (getShareBit(logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr)
+						&& (getAddress(logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr) != logicalSliceAddr))
+				{
+					tempSliceAddr = getAddress(tempSliceAddr);
+				}
 
-		// unlink
-		SelectiveGetFromGcVictimList(dieNo, blockNo);
-		virtualBlockMapPtr->block[dieNo][blockNo].invalidSliceCnt++;
-		logicalSliceMapPtr->logicalSlice[logicalSliceAddr].virtualSliceAddr = VSA_NONE;
+				if((getAddress(logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr) == logicalSliceAddr))
+				{
+					logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr = logicalSliceMapPtr->logicalSlice[logicalSliceAddr].virtualSliceAddr;
+				}
+			}
 
-		PutToGcVictimList(dieNo, blockNo, virtualBlockMapPtr->block[dieNo][blockNo].invalidSliceCnt);
+			logicalSliceMapPtr->logicalSlice[logicalSliceAddr].virtualSliceAddr = VSA_NONE;
+		} else
+		{
+			if(virtualSliceMapPtr->virtualSlice[virtualSliceAddr].logicalSliceAddr != logicalSliceAddr)
+			{
+				return;
+			}
+
+			dieNo = Vsa2VdieTranslation(virtualSliceAddr);
+			blockNo = Vsa2VblockTranslation(virtualSliceAddr);
+
+			SelectiveGetFromGcVictimList(dieNo, blockNo);
+			virtualBlockMapPtr->block[dieNo][blockNo].invalidSliceCnt++;
+			logicalSliceMapPtr->logicalSlice[logicalSliceAddr].virtualSliceAddr = VSA_NONE;
+
+			PutToGcVictimList(dieNo, blockNo, virtualBlockMapPtr->block[dieNo][blockNo].invalidSliceCnt);
+		}
 	}
 
 }

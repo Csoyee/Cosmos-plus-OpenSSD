@@ -177,15 +177,24 @@ void ReqTransNvmeToSlice(unsigned int cmdSlotTag, unsigned int startLba, unsigne
 }
 
 
-void DataShare (unsigned int originReqSlotTag) {
+void DataShare (unsigned int reqSlotTag) {
 
-	unsigned int sourceLsa, targetLsa;
+	unsigned int tempLsa, sourceLsa, targetLsa, vsa;
 
-	sourceLsa = reqPoolPtr->reqPool[originReqSlotTag].sourceSliceAddr;
-	targetLsa = reqPoolPtr->reqPool[originReqSlotTag].logicalSliceAddr;
+	sourceLsa = reqPoolPtr->reqPool[reqSlotTag].sourceSliceAddr;
+	targetLsa = reqPoolPtr->reqPool[reqSlotTag].logicalSliceAddr;
 
-	logicalSliceMapPtr->logicalSlice[targetLsa].virtualSliceAddr = logicalSliceMapPtr->logicalSlice[sourceLsa].virtualSliceAddr;
-	// virtualSliceMapPtr은 어떻게 수정할지 ?
+	// FIXME, 기존에 virtualSliceAddr가 가리키던 logical address 를 새 logical address 가 가리키고,virtual address 는 새 logical address 를 가리키게 변경
+	while (getShareBit(logicalSliceMapPtr->logicalSlice[tempLsa].virtualSliceAddr))
+	{
+		tempLsa = getAddress(tempLsa);
+	}
+
+	vsa = logicalSliceMapPtr->logicalSlice[tempLsa].virtualSliceAddr;
+
+	virtualSliceMapPtr->virtualSlice[vsa].logicalSliceAddr = setShareBit(targetLsa);
+	logicalSliceMapPtr->logicalSlice[targetLsa].virtualSliceAddr = setShareBit(sourceLsa);
+
 }
 
 void FlushDataBufEntry(int originReqSlotTag)
@@ -217,12 +226,15 @@ void FlushDataBufEntry(int originReqSlotTag)
 		SelectLowLevelReqQ(reqSlotTag);
 
 		dataBufMapPtr->dataBuf[dataBufEntry].dirty = DATA_BUF_CLEAN;
-		logicalSliceMapPtr->logicalSlice[targetSliceAddr].virtualSliceAddr = virtualSliceAddr;
-		// TODO: v2l mapping 정보는 어떻게 처리할지?
+
+		// FIXME, [FlushDataBufEntry] share list 변경 내용 다시 확인하기
+		virtualSliceMapPtr->virtualSlice[virtualSliceAddr].logicalSliceAddr = setShareBit(targetSliceAddr);
+		logicalSliceMapPtr->logicalSlice[targetSliceAddr].virtualSliceAddr = setShareBit(logicalSliceAddr);
 	} else
 	{
-		logicalSliceMapPtr->logicalSlice[targetSliceAddr].virtualSliceAddr = logicalSliceMapPtr->logicalSlice[logicalSliceAddr].virtualSliceAddr;
-		// TODO: v2l mapping 정보는 어떻게 처리할지?
+		// FIXME, share list 변경 내용 다시 확인하기
+		virtualSliceMapPtr->virtualSlice[logicalSliceMapPtr->logicalSlice[logicalSliceAddr].virtualSliceAddr].logicalSliceAddr = setShareBit(targetSliceAddr);
+		logicalSliceMapPtr->logicalSlice[targetSliceAddr].virtualSliceAddr = setShareBit(logicalSliceAddr);
 	}
 }
 
@@ -298,9 +310,6 @@ void ReqTransSliceToLowLevel()
 
 		if (reqPoolPtr->reqPool[reqSlotTag].reqCode == REQ_CODE_SHARE)
 		{
-			/*
-			 * TODO, SHARE command 에 대한 로직 추가
-			 */
 			dataBufEntry = CheckDataBufHit(reqSlotTag);
 			if (dataBufEntry != DATA_BUF_FAIL)
 			{

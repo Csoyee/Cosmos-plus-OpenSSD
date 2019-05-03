@@ -70,7 +70,7 @@ void InitGcVictimMap()
 
 void GarbageCollection(unsigned int dieNo)
 {
-	unsigned int victimBlockNo, pageNo, virtualSliceAddr, logicalSliceAddr, dieNoForGcCopy, reqSlotTag;
+	unsigned int victimBlockNo, pageNo, virtualSliceAddr, logicalSliceAddr, dieNoForGcCopy, reqSlotTag, tempSliceAddr;
 
 	victimBlockNo = GetFromGcVictimList(dieNo);
 	dieNoForGcCopy = dieNo;
@@ -80,17 +80,23 @@ void GarbageCollection(unsigned int dieNo)
 		for(pageNo=0 ; pageNo<USER_PAGES_PER_BLOCK ; pageNo++)
 		{
 			virtualSliceAddr = Vorg2VsaTranslation(dieNo, victimBlockNo, pageNo);
-			logicalSliceAddr = virtualSliceMapPtr->virtualSlice[virtualSliceAddr].logicalSliceAddr;
+			// FIXME, 만일 lsn 이 sharing 되고 있는 lsn 인 경우 logicalSliceAddr 는 share bit가 0일 때까지 따라가야 함.
+			logicalSliceAddr = getAddress(virtualSliceMapPtr->virtualSlice[tempSliceAddr].logicalSliceAddr);
 
+			tempSliceAddr = logicalSliceAddr;
+			while (getShareBit(logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr))
+			{
+				tempSliceAddr = getAddress(tempSliceAddr);
+			}
 			if(logicalSliceAddr != LSA_NONE)
-				if(logicalSliceMapPtr->logicalSlice[logicalSliceAddr].virtualSliceAddr ==  virtualSliceAddr) //valid data
+				if(logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr ==  virtualSliceAddr) //valid data
 				{
 					//read
 					reqSlotTag = GetFromFreeReqQ();
 
 					reqPoolPtr->reqPool[reqSlotTag].reqType = REQ_TYPE_NAND;
 					reqPoolPtr->reqPool[reqSlotTag].reqCode = REQ_CODE_READ;
-					reqPoolPtr->reqPool[reqSlotTag].logicalSliceAddr = logicalSliceAddr;
+					reqPoolPtr->reqPool[reqSlotTag].logicalSliceAddr = tempSliceAddr;
 					reqPoolPtr->reqPool[reqSlotTag].reqOpt.dataBufFormat = REQ_OPT_DATA_BUF_TEMP_ENTRY;
 					reqPoolPtr->reqPool[reqSlotTag].reqOpt.nandAddr = REQ_OPT_NAND_ADDR_VSA;
 					reqPoolPtr->reqPool[reqSlotTag].reqOpt.nandEcc = REQ_OPT_NAND_ECC_ON;
@@ -108,7 +114,7 @@ void GarbageCollection(unsigned int dieNo)
 
 					reqPoolPtr->reqPool[reqSlotTag].reqType = REQ_TYPE_NAND;
 					reqPoolPtr->reqPool[reqSlotTag].reqCode = REQ_CODE_WRITE;
-					reqPoolPtr->reqPool[reqSlotTag].logicalSliceAddr = logicalSliceAddr;
+					reqPoolPtr->reqPool[reqSlotTag].logicalSliceAddr = tempSliceAddr;
 					reqPoolPtr->reqPool[reqSlotTag].reqOpt.dataBufFormat = REQ_OPT_DATA_BUF_TEMP_ENTRY;
 					reqPoolPtr->reqPool[reqSlotTag].reqOpt.nandAddr = REQ_OPT_NAND_ADDR_VSA;
 					reqPoolPtr->reqPool[reqSlotTag].reqOpt.nandEcc = REQ_OPT_NAND_ECC_ON;
@@ -119,8 +125,15 @@ void GarbageCollection(unsigned int dieNo)
 					UpdateTempDataBufEntryInfoBlockingReq(reqPoolPtr->reqPool[reqSlotTag].dataBufInfo.entry, reqSlotTag);
 					reqPoolPtr->reqPool[reqSlotTag].nandInfo.virtualSliceAddr = FindFreeVirtualSliceForGc(dieNoForGcCopy, victimBlockNo);
 
-					logicalSliceMapPtr->logicalSlice[logicalSliceAddr].virtualSliceAddr = reqPoolPtr->reqPool[reqSlotTag].nandInfo.virtualSliceAddr;
-					virtualSliceMapPtr->virtualSlice[reqPoolPtr->reqPool[reqSlotTag].nandInfo.virtualSliceAddr].logicalSliceAddr = logicalSliceAddr;
+					// FIXME: virtual slice map ptr 이 가리켜야하는 logicalSliceAddr가 다를 수 있음.
+					logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr = reqPoolPtr->reqPool[reqSlotTag].nandInfo.virtualSliceAddr;
+					if(logicalSliceAddr == tempSliceAddr)
+					{
+						virtualSliceMapPtr->virtualSlice[reqPoolPtr->reqPool[reqSlotTag].nandInfo.virtualSliceAddr].logicalSliceAddr = logicalSliceAddr;
+					} else
+					{
+						virtualSliceMapPtr->virtualSlice[reqPoolPtr->reqPool[reqSlotTag].nandInfo.virtualSliceAddr].logicalSliceAddr = setShareBit(logicalSliceAddr);
+					}
 
 					SelectLowLevelReqQ(reqSlotTag);
 				}

@@ -89,6 +89,12 @@
 #define BBT_INFO_GROWN_BAD_UPDATE_NONE			0
 #define BBT_INFO_GROWN_BAD_UPDATE_BOOKED		1
 
+// share bit mask,
+// sVsn: vsn with shared bit (shared bit: MSB, 0 or 1)
+#define getShareBit(addr)			((((addr) & 0x80000000) > 0) && (((addr) & VSA_NONE) != VSA_NONE))
+#define getAddress(addr)		((addr) & 0x7FFFFFFF)
+#define setShareBit(addr)		((addr) | 0x80000000)
+
 // virtual slice address to virtual organization translation
 #define Vsa2VdieTranslation(virtualSliceAddr) ((virtualSliceAddr) % (USER_DIES))
 #define Vsa2VblockTranslation(virtualSliceAddr) (((virtualSliceAddr) / (USER_DIES)) / (SLICES_PER_BLOCK))
@@ -110,7 +116,7 @@
 
 //for logical to virtual translation
 typedef struct _LOGICAL_SLICE_ENTRY {
-	unsigned int virtualSliceAddr;
+	unsigned int virtualSliceAddr;	// MSB: share bit
 } LOGICAL_SLICE_ENTRY, *P_LOGICAL_SLICE_ENTRY;
 
 typedef struct _LOGICAL_SLICE_MAP {
