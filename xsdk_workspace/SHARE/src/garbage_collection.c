@@ -86,7 +86,7 @@ void GarbageCollection(unsigned int dieNo)
 			tempSliceAddr = logicalSliceAddr;
 			while (getShareBit(logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr))
 			{
-				tempSliceAddr = getAddress(tempSliceAddr);
+				tempSliceAddr = getAddress(logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr);
 			}
 			if(logicalSliceAddr != LSA_NONE)
 				if(logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr ==  virtualSliceAddr) //valid data

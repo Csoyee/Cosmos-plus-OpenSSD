@@ -71,6 +71,7 @@ void InitFTL()
 
 	xil_printf("[ storage capacity %d MB ]\r\n", storageCapacity_L / ((1024*1024) / BYTES_PER_NVME_BLOCK));
 	xil_printf("[ ftl configuration complete. ]\r\n");
+
 }
 
 

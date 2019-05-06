@@ -101,7 +101,7 @@ typedef struct _TEMPORARY_DATA_BUF_MAP{
 } TEMPORARY_DATA_BUF_MAP, *P_TEMPORARY_DATA_BUF_MAP;
 
 void InitDataBuf();
-unsigned int CheckDataBufHit(unsigned int reqSlotTag);
+unsigned int CheckDataBufHit(unsigned int logicalSliceAddr);
 unsigned int AllocateDataBuf();
 void UpdateDataBufEntryInfoBlockingReq(unsigned int bufEntry, unsigned int reqSlotTag);
 
@@ -113,7 +113,7 @@ void SelectiveGetFromDataBufHashList(unsigned int bufEntry);
 
 extern P_DATA_BUF_MAP dataBufMapPtr;
 extern DATA_BUF_LRU_LIST dataBufLruList;
-extern P_DATA_BUF_HASH_TABLE dataBufHashTable;
+extern P_DATA_BUF_HASH_TABLE dataBufHashTablePtr;
 extern P_TEMPORARY_DATA_BUF_MAP tempDataBufMapPtr;
 
 #endif /* DATA_BUFFER_H_ */

@@ -768,7 +768,7 @@ void InvalidateOldVsa(unsigned int logicalSliceAddr)
 
 	while (getShareBit(logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr))
 	{
-		tempSliceAddr = getAddress(tempSliceAddr);
+		tempSliceAddr = getAddress(logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr);
 		shareFlag = 1;
 	}
 
@@ -789,7 +789,7 @@ void InvalidateOldVsa(unsigned int logicalSliceAddr)
 				while (getShareBit(logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr)
 						&& (getAddress(logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr) != logicalSliceAddr))
 				{
-					tempSliceAddr = getAddress(tempSliceAddr);
+					tempSliceAddr = getAddress(logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr);
 				}
 
 				if((getAddress(logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr) == logicalSliceAddr))

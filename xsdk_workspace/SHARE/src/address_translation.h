@@ -91,7 +91,7 @@
 
 // share bit mask,
 // sVsn: vsn with shared bit (shared bit: MSB, 0 or 1)
-#define getShareBit(addr)			((((addr) & 0x80000000) > 0) && (((addr) & VSA_NONE) != VSA_NONE))
+#define getShareBit(addr)		((((addr) & 0x80000000) > 0) && (((addr) & VSA_NONE) != VSA_NONE))
 #define getAddress(addr)		((addr) & 0x7FFFFFFF)
 #define setShareBit(addr)		((addr) | 0x80000000)
 

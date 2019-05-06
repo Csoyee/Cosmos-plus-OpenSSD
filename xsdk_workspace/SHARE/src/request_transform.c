@@ -148,7 +148,8 @@ void ReqTransNvmeToSlice(unsigned int cmdSlotTag, unsigned int startLba, unsigne
 		PutToSliceReqQ(reqSlotTag);
 
 		tempLsa++;
-		tempLsa2++; // SY add
+		if(cmdCode == IO_NVM_SHARE)
+			tempLsa2++; // SY add
 		transCounter++;
 		nvmeDmaStartIndex += tempNumOfNvmeBlock;
 	}
@@ -177,27 +178,29 @@ void ReqTransNvmeToSlice(unsigned int cmdSlotTag, unsigned int startLba, unsigne
 }
 
 
-void DataShare (unsigned int reqSlotTag) {
+void shareData (unsigned int reqSlotTag) {
 
-	unsigned int tempLsa, sourceLsa, targetLsa, vsa;
+	unsigned int tempLsa, sourceLsa, targetLsa, virtualSliceAddr;
 
 	sourceLsa = reqPoolPtr->reqPool[reqSlotTag].sourceSliceAddr;
 	targetLsa = reqPoolPtr->reqPool[reqSlotTag].logicalSliceAddr;
 
+	tempLsa = sourceLsa;
 	// FIXME, 기존에 virtualSliceAddr가 가리키던 logical address 를 새 logical address 가 가리키고,virtual address 는 새 logical address 를 가리키게 변경
 	while (getShareBit(logicalSliceMapPtr->logicalSlice[tempLsa].virtualSliceAddr))
 	{
-		tempLsa = getAddress(tempLsa);
+		tempLsa = getAddress(logicalSliceMapPtr->logicalSlice[tempLsa].virtualSliceAddr);
 	}
 
-	vsa = logicalSliceMapPtr->logicalSlice[tempLsa].virtualSliceAddr;
+	virtualSliceAddr = logicalSliceMapPtr->logicalSlice[tempLsa].virtualSliceAddr;
+	sourceLsa = virtualSliceMapPtr->virtualSlice[virtualSliceAddr].logicalSliceAddr;
 
-	virtualSliceMapPtr->virtualSlice[vsa].logicalSliceAddr = setShareBit(targetLsa);
+	virtualSliceMapPtr->virtualSlice[virtualSliceAddr].logicalSliceAddr = setShareBit(targetLsa);
 	logicalSliceMapPtr->logicalSlice[targetLsa].virtualSliceAddr = setShareBit(sourceLsa);
 
 }
 
-void FlushDataBufEntry(int originReqSlotTag)
+void shareBufferdEntry(int originReqSlotTag)
 {
 	unsigned int reqSlotTag, virtualSliceAddr, logicalSliceAddr, dataBufEntry, targetSliceAddr;
 
@@ -209,6 +212,7 @@ void FlushDataBufEntry(int originReqSlotTag)
 	{
 		reqSlotTag = GetFromFreeReqQ();
 		virtualSliceAddr = AddrTransWrite(logicalSliceAddr);
+		// logicalSliceAddr - virtualSliceAddr mapping is made in AddrTransWrite function
 
 		reqPoolPtr->reqPool[reqSlotTag].reqType = REQ_TYPE_NAND;
 		reqPoolPtr->reqPool[reqSlotTag].reqCode = REQ_CODE_WRITE;
@@ -232,9 +236,7 @@ void FlushDataBufEntry(int originReqSlotTag)
 		logicalSliceMapPtr->logicalSlice[targetSliceAddr].virtualSliceAddr = setShareBit(logicalSliceAddr);
 	} else
 	{
-		// FIXME, share list 변경 내용 다시 확인하기
-		virtualSliceMapPtr->virtualSlice[logicalSliceMapPtr->logicalSlice[logicalSliceAddr].virtualSliceAddr].logicalSliceAddr = setShareBit(targetSliceAddr);
-		logicalSliceMapPtr->logicalSlice[targetSliceAddr].virtualSliceAddr = setShareBit(logicalSliceAddr);
+		shareData(originReqSlotTag);
 	}
 }
 
@@ -310,23 +312,25 @@ void ReqTransSliceToLowLevel()
 
 		if (reqPoolPtr->reqPool[reqSlotTag].reqCode == REQ_CODE_SHARE)
 		{
-			dataBufEntry = CheckDataBufHit(reqSlotTag);
+			dataBufEntry = CheckDataBufHit(reqPoolPtr->reqPool[reqSlotTag].sourceSliceAddr);
 			if (dataBufEntry != DATA_BUF_FAIL)
 			{
 				reqPoolPtr->reqPool[reqSlotTag].dataBufInfo.entry = dataBufEntry;
-				FlushDataBufEntry(reqSlotTag);
+				shareBufferdEntry(reqSlotTag);
 			}
 			else
 			{
-				DataShare(reqSlotTag);
+				shareData(reqSlotTag);
 			}
 			// NOTE: low level request queue 로 share request 내려야 하는지?
 			// TODO: completion 은 어떻게 보내주면 되는지?
 			continue;
+
+			// TODO: move reqSlotTag to free request Queue
 		}
 
 		//allocate a data buffer entry for this request
-		dataBufEntry = CheckDataBufHit(reqSlotTag);
+		dataBufEntry = CheckDataBufHit(reqPoolPtr->reqPool[reqSlotTag].logicalSliceAddr);
 		if(dataBufEntry != DATA_BUF_FAIL)
 		{
 			//data buffer hit
