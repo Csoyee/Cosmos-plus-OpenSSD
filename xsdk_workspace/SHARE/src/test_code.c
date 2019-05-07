@@ -237,6 +237,11 @@ void testCode()
 	checkShareList(8);
 	checkShareList(13);
 
+	dummyShareCommand(2, 16);
+	dummyShareCommand(13, 2);
+
+	checkShareList(16);
+
 /*	for (i=1 ; i<11 ; i++)
 	{
 		checkShareList(i);

@@ -194,6 +194,7 @@ void shareData (unsigned int reqSlotTag) {
 	virtualSliceAddr = logicalSliceMapPtr->logicalSlice[tempLsa].virtualSliceAddr;
 	sourceLsa = virtualSliceMapPtr->virtualSlice[virtualSliceAddr].logicalSliceAddr;
 
+	InvalidateOldVsa(targetLsa);
 	virtualSliceMapPtr->virtualSlice[virtualSliceAddr].logicalSliceAddr = setShareBit(targetLsa);
 	logicalSliceMapPtr->logicalSlice[targetLsa].virtualSliceAddr = setShareBit(sourceLsa);
 
@@ -230,6 +231,7 @@ void shareBufferdEntry(int originReqSlotTag)
 
 		dataBufMapPtr->dataBuf[dataBufEntry].dirty = DATA_BUF_CLEAN;
 
+		InvalidateOldVsa(targetSliceAddr);
 		virtualSliceMapPtr->virtualSlice[virtualSliceAddr].logicalSliceAddr = setShareBit(targetSliceAddr);
 		logicalSliceMapPtr->logicalSlice[targetSliceAddr].virtualSliceAddr = setShareBit(logicalSliceAddr);
 	} else
