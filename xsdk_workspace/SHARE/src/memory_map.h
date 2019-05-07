@@ -54,7 +54,7 @@
 #include "request_transform.h"
 #include "garbage_collection.h"
 
-
+//void testCode();
 #define DRAM_START_ADDR					0x00100000
 
 #define MEMORY_SEGMENTS_START_ADDR		DRAM_START_ADDR

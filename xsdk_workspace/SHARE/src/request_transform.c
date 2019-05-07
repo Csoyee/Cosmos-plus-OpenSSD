@@ -186,7 +186,6 @@ void shareData (unsigned int reqSlotTag) {
 	targetLsa = reqPoolPtr->reqPool[reqSlotTag].logicalSliceAddr;
 
 	tempLsa = sourceLsa;
-	// FIXME, 기존에 virtualSliceAddr가 가리키던 logical address 를 새 logical address 가 가리키고,virtual address 는 새 logical address 를 가리키게 변경
 	while (getShareBit(logicalSliceMapPtr->logicalSlice[tempLsa].virtualSliceAddr))
 	{
 		tempLsa = getAddress(logicalSliceMapPtr->logicalSlice[tempLsa].virtualSliceAddr);
@@ -231,7 +230,6 @@ void shareBufferdEntry(int originReqSlotTag)
 
 		dataBufMapPtr->dataBuf[dataBufEntry].dirty = DATA_BUF_CLEAN;
 
-		// FIXME, [FlushDataBufEntry] share list 변경 내용 다시 확인하기
 		virtualSliceMapPtr->virtualSlice[virtualSliceAddr].logicalSliceAddr = setShareBit(targetSliceAddr);
 		logicalSliceMapPtr->logicalSlice[targetSliceAddr].virtualSliceAddr = setShareBit(logicalSliceAddr);
 	} else
@@ -324,6 +322,11 @@ void ReqTransSliceToLowLevel()
 			}
 			// NOTE: low level request queue 로 share request 내려야 하는지?
 			// TODO: completion 은 어떻게 보내주면 되는지?
+
+			reqPoolPtr->reqPool[reqSlotTag].reqQueueType = REQ_QUEUE_TYPE_NONE;
+
+			PutToFreeReqQ(reqSlotTag);
+
 			continue;
 
 			// TODO: move reqSlotTag to free request Queue

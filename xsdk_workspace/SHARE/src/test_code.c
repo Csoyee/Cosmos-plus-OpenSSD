@@ -52,7 +52,7 @@ void dummyBufWriteCommand(unsigned int logicalSliceAddr)
 {
 	unsigned int dataBufEntry;
 	int * checker;
-
+	xil_printf("dummyBufWriteCommand\r\n");
 	dataBufEntry = AllocateDataBuf();
 	dummyEvictCommand(dataBufEntry);
 	dataBufMapPtr->dataBuf[dataBufEntry].logicalSliceAddr = logicalSliceAddr;
@@ -103,71 +103,35 @@ void dummyNANDReadCommand(unsigned int logicalSliceAddr)
 	xil_printf("Buffer Read: %d\r\n", check);
 }
 
+// this function is for dummy share command implementation
 void dummyShareCommand(unsigned int sourceSliceAddr, unsigned int targetSliceAddr)
 {
-	unsigned int dataBufEntry, reqSlotTag, virtualSliceAddr, tempSliceAddr;
+	unsigned int dataBufEntry, reqSlotTag;
 
+	reqSlotTag = GetFromFreeReqQ();
+
+	reqPoolPtr->reqPool[reqSlotTag].sourceSliceAddr = sourceSliceAddr;
+	reqPoolPtr->reqPool[reqSlotTag].logicalSliceAddr = targetSliceAddr;
 	dataBufEntry = CheckDataBufHit(sourceSliceAddr);
 	if(dataBufEntry != DATA_BUF_FAIL)
 	{
-		// is in buffer
 		if(dataBufMapPtr->dataBuf[dataBufEntry].dirty == DATA_BUF_DIRTY)
-		{
-			xil_printf("sourSliceAddr is in buffer and is dirty\r\n");
-			reqSlotTag = GetFromFreeReqQ();
-			virtualSliceAddr = AddrTransWrite(sourceSliceAddr);
+			xil_printf("sourceSliceAddr is in buffer and is dirty\r\n");
+		else
+			xil_printf("sourceSliceAddr is in buffer and is clean\r\n");
 
-			reqPoolPtr->reqPool[reqSlotTag].reqType = REQ_TYPE_NAND;
-			reqPoolPtr->reqPool[reqSlotTag].reqCode = REQ_CODE_WRITE;
-			reqPoolPtr->reqPool[reqSlotTag].logicalSliceAddr = dataBufMapPtr->dataBuf[dataBufEntry].logicalSliceAddr;
-			reqPoolPtr->reqPool[reqSlotTag].reqOpt.dataBufFormat = REQ_OPT_DATA_BUF_ENTRY;
-			reqPoolPtr->reqPool[reqSlotTag].reqOpt.nandAddr = REQ_OPT_NAND_ADDR_VSA;
-			reqPoolPtr->reqPool[reqSlotTag].reqOpt.nandEcc = REQ_OPT_NAND_ECC_ON;
-			reqPoolPtr->reqPool[reqSlotTag].reqOpt.nandEccWarning = REQ_OPT_NAND_ECC_WARNING_ON;
-			reqPoolPtr->reqPool[reqSlotTag].reqOpt.rowAddrDependencyCheck = REQ_OPT_ROW_ADDR_DEPENDENCY_CHECK;
-			reqPoolPtr->reqPool[reqSlotTag].reqOpt.blockSpace = REQ_OPT_BLOCK_SPACE_MAIN;
-			reqPoolPtr->reqPool[reqSlotTag].dataBufInfo.entry = dataBufEntry;
-			UpdateDataBufEntryInfoBlockingReq(dataBufEntry, reqSlotTag);
-			reqPoolPtr->reqPool[reqSlotTag].nandInfo.virtualSliceAddr = virtualSliceAddr;
-
-			SelectLowLevelReqQ(reqSlotTag);
-
-			dataBufMapPtr->dataBuf[dataBufEntry].dirty = DATA_BUF_CLEAN;
-
-			virtualSliceMapPtr->virtualSlice[virtualSliceAddr].logicalSliceAddr = setShareBit(targetSliceAddr);
-			logicalSliceMapPtr->logicalSlice[targetSliceAddr].virtualSliceAddr = setShareBit(sourceSliceAddr);
-		} else
-		{
-			xil_printf("sourSliceAddr is in buffer and is clean\r\n");
-			tempSliceAddr = sourceSliceAddr;
-			while (getShareBit(logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr))
-			{
-				tempSliceAddr = getAddress(logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr);
-			}
-
-			virtualSliceAddr = logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr;
-			sourceSliceAddr = virtualSliceMapPtr->virtualSlice[virtualSliceAddr].logicalSliceAddr;
-
-			virtualSliceMapPtr->virtualSlice[virtualSliceAddr].logicalSliceAddr = setShareBit(targetSliceAddr);
-			logicalSliceMapPtr->logicalSlice[targetSliceAddr].virtualSliceAddr = setShareBit(sourceSliceAddr);
-		}
+		reqPoolPtr->reqPool[reqSlotTag].dataBufInfo.entry = dataBufEntry;
+		shareBufferdEntry(reqSlotTag);
 	} else {
 		// is not in buffer
 		xil_printf("sourSliceAddr is not in buffer\r\n");
-		tempSliceAddr = sourceSliceAddr;
-		while (getShareBit(logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr))
-		{
-			tempSliceAddr = getAddress(logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr);
-		}
-
-		virtualSliceAddr = logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr;
-		sourceSliceAddr = virtualSliceMapPtr->virtualSlice[virtualSliceAddr].logicalSliceAddr;
-
-		virtualSliceMapPtr->virtualSlice[virtualSliceAddr].logicalSliceAddr = setShareBit(targetSliceAddr);
-		logicalSliceMapPtr->logicalSlice[targetSliceAddr].virtualSliceAddr = setShareBit(sourceSliceAddr);
+		shareData(reqSlotTag);
 	}
 
 	checkShareList(targetSliceAddr);
+
+	reqPoolPtr->reqPool[reqSlotTag].reqQueueType = REQ_QUEUE_TYPE_NONE;
+	PutToFreeReqQ(reqSlotTag);
 }
 
 // Flush whole data in data buffer
@@ -177,6 +141,7 @@ void FlushDataBuffer()
 	int index;
 
 	xil_printf("flush data buffer entry \r\n");
+
 	for(index = 0 ; index < AVAILABLE_DATA_BUFFER_ENTRY_COUNT ; index ++)
 	{
 		bufEntry = dataBufHashTablePtr->dataBufHash[index].headEntry;
@@ -204,21 +169,37 @@ void FlushDataBuffer()
 				SelectLowLevelReqQ(reqSlotTag);
 
 				dataBufMapPtr->dataBuf[bufEntry].dirty = DATA_BUF_CLEAN;
-
-				bufEntry = dataBufMapPtr->dataBuf[bufEntry].hashNextEntry;
 			}
+
+			bufEntry = dataBufMapPtr->dataBuf[bufEntry].hashNextEntry;
 		}
 	}
 
 	SyncAllLowLevelReqDone();
 }
 
+// this function print out mapping info
 void checkShareList(unsigned int logicalSliceAddr)
 {
-	unsigned int tempSliceAddr;
+	unsigned int tempSliceAddr, virtualSliceAddr;
 
+	xil_printf("checkShareList\r\n");
 	tempSliceAddr = logicalSliceAddr;
 
+	while (getShareBit(logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr))
+	{
+		tempSliceAddr = getAddress(logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr);
+	}
+
+	virtualSliceAddr = logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr;
+
+	if(virtualSliceAddr == VSA_NONE)
+	{
+		xil_printf("LSN: %d - no vsa mapping\r\n", logicalSliceAddr);
+		return;
+	}
+
+	tempSliceAddr = getAddress(virtualSliceMapPtr->virtualSlice[virtualSliceAddr].logicalSliceAddr);
 	xil_printf("LSN: %d  ", tempSliceAddr);
 	while (getShareBit(logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr))
 	{
@@ -226,31 +207,38 @@ void checkShareList(unsigned int logicalSliceAddr)
 		xil_printf("%d (press enter) ", tempSliceAddr);
 		inbyte();
 	}
-	xil_printf("\r\nVSN: %d\r\n", logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr);
+
+	xil_printf("\r\nVSN: %d\r\n", virtualSliceAddr);
 }
 
 void testCode()
 {
+	int i;
 	xil_printf("test Code\r\n");
 	// 1. write dummy data
-	dummyBufWriteCommand(1);
-	dummyBufWriteCommand(2);
-	dummyBufWriteCommand(3);
-	dummyBufWriteCommand(4);
-	dummyBufWriteCommand(5);
-	dummyBufWriteCommand(6);
-	dummyBufWriteCommand(7);
-	dummyBufWriteCommand(8);
-	dummyBufWriteCommand(9);
-	dummyBufWriteCommand(10);
+	for (i=1 ; i<11 ; i++)
+	{
+		dummyBufWriteCommand(i);
+	}
 
 	// 2. check buffered data share works well
-	dummyShareCommand(8, 13);
-	dummyShareCommand(13, 15);
-	dummyShareCommand(8, 14);
+	dummyShareCommand(8, 13);  // in buffer and is dirty
+	dummyShareCommand(13, 15); // not in buffer
+	dummyShareCommand(8, 14);  // in buffer and is clean
 
 	dummyNANDReadCommand(8);
 	dummyNANDReadCommand(14);
-	// 3. check unbuffered data share works well
 
+	dummyBufWriteCommand(14);
+	dummyBufWriteCommand(8);
+	FlushDataBuffer();
+
+	checkShareList(14);
+	checkShareList(8);
+	checkShareList(13);
+
+/*	for (i=1 ; i<11 ; i++)
+	{
+		checkShareList(i);
+	}*/
 }

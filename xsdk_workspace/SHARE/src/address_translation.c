@@ -760,7 +760,7 @@ unsigned int FindDieForFreeSliceAllocation()
 void InvalidateOldVsa(unsigned int logicalSliceAddr)
 {
 	unsigned int virtualSliceAddr, dieNo, blockNo;
-	unsigned int tempSliceAddr, shareFlag ;
+	unsigned int tempSliceAddr, shareFlag, sharedCount, prevSliceAddr;
 
 	tempSliceAddr = logicalSliceAddr;
 
@@ -769,32 +769,45 @@ void InvalidateOldVsa(unsigned int logicalSliceAddr)
 	while (getShareBit(logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr))
 	{
 		tempSliceAddr = getAddress(logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr);
-		shareFlag = 1;
 	}
 
 	virtualSliceAddr = logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr;
+
+	sharedCount=0;
+
+	if(getShareBit(virtualSliceMapPtr->virtualSlice[virtualSliceAddr].logicalSliceAddr))
+	{
+		if(getAddress(virtualSliceMapPtr->virtualSlice[virtualSliceAddr].logicalSliceAddr) == logicalSliceAddr)
+			prevSliceAddr = virtualSliceAddr;
+		tempSliceAddr = getAddress(virtualSliceMapPtr->virtualSlice[virtualSliceAddr].logicalSliceAddr);
+		sharedCount++;
+		shareFlag = 1;
+	}
+
+	while (getShareBit(logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr))
+	{
+		if(getAddress(logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr) == logicalSliceAddr)
+			prevSliceAddr = setShareBit(tempSliceAddr);
+		tempSliceAddr = getAddress(logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr);
+		sharedCount++;
+	}
 
 	if(virtualSliceAddr != VSA_NONE)
 	{
 		if(shareFlag)
 		{
-			// FIXME, [invalidateOldVsa] share list 변경 내용 다시 확인하기
-			tempSliceAddr = virtualSliceMapPtr->virtualSlice[virtualSliceAddr].logicalSliceAddr;
-
-			if (getAddress(tempSliceAddr) == logicalSliceAddr)
-			{
-				virtualSliceMapPtr->virtualSlice[virtualSliceAddr].logicalSliceAddr = setShareBit(logicalSliceAddr);
-			} else
-			{
-				while (getShareBit(logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr)
-						&& (getAddress(logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr) != logicalSliceAddr))
-				{
-					tempSliceAddr = getAddress(logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr);
+			sharedCount--;
+			if(sharedCount == 1) {
+				if(getShareBit(prevSliceAddr)){
+					logicalSliceMapPtr->logicalSlice[getAddress(prevSliceAddr)].virtualSliceAddr = getAddress(logicalSliceMapPtr->logicalSlice[logicalSliceAddr].virtualSliceAddr);
+				} else {
+					virtualSliceMapPtr->virtualSlice[prevSliceAddr].logicalSliceAddr = getAddress(logicalSliceMapPtr->logicalSlice[logicalSliceAddr].virtualSliceAddr);
 				}
-
-				if((getAddress(logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr) == logicalSliceAddr))
-				{
-					logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr = logicalSliceMapPtr->logicalSlice[logicalSliceAddr].virtualSliceAddr;
+			} else {
+				if(getShareBit(prevSliceAddr)){
+					logicalSliceMapPtr->logicalSlice[getAddress(prevSliceAddr)].virtualSliceAddr =logicalSliceMapPtr->logicalSlice[logicalSliceAddr].virtualSliceAddr;
+				} else {
+					virtualSliceMapPtr->virtualSlice[prevSliceAddr].logicalSliceAddr = logicalSliceMapPtr->logicalSlice[logicalSliceAddr].virtualSliceAddr;
 				}
 			}
 

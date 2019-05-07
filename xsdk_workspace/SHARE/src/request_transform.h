@@ -86,6 +86,9 @@ void SelectLowLevelReqQ(unsigned int reqSlotTag);
 void ReleaseBlockedByBufDepReq(unsigned int reqSlotTag);
 void ReleaseBlockedByRowAddrDepReq(unsigned int chNo, unsigned int wayNo);
 
+void shareData (unsigned int reqSlotTag);
+void shareBufferdEntry(int originReqSlotTag);
+
 extern P_ROW_ADDR_DEPENDENCY_TABLE rowAddrDependencyTablePtr;
 
 #endif /* REQUEST_TRANSFORM_H_ */
