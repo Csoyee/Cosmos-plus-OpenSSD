@@ -80,9 +80,7 @@ void GarbageCollection(unsigned int dieNo)
 		for(pageNo=0 ; pageNo<USER_PAGES_PER_BLOCK ; pageNo++)
 		{
 			virtualSliceAddr = Vorg2VsaTranslation(dieNo, victimBlockNo, pageNo);
-			// FIXME, 만일 lsn 이 sharing 되고 있는 lsn 인 경우 logicalSliceAddr 는 share bit가 0일 때까지 따라가야 함.
-			logicalSliceAddr = getAddress(virtualSliceMapPtr->virtualSlice[tempSliceAddr].logicalSliceAddr);
-
+			logicalSliceAddr = getAddress(virtualSliceMapPtr->virtualSlice[virtualSliceAddr].logicalSliceAddr);
 			tempSliceAddr = logicalSliceAddr;
 			while (getShareBit(logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr))
 			{
@@ -124,8 +122,6 @@ void GarbageCollection(unsigned int dieNo)
 					reqPoolPtr->reqPool[reqSlotTag].dataBufInfo.entry = AllocateTempDataBuf(dieNo);
 					UpdateTempDataBufEntryInfoBlockingReq(reqPoolPtr->reqPool[reqSlotTag].dataBufInfo.entry, reqSlotTag);
 					reqPoolPtr->reqPool[reqSlotTag].nandInfo.virtualSliceAddr = FindFreeVirtualSliceForGc(dieNoForGcCopy, victimBlockNo);
-
-					// FIXME: virtual slice map ptr 이 가리켜야하는 logicalSliceAddr가 다를 수 있음.
 					logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr = reqPoolPtr->reqPool[reqSlotTag].nandInfo.virtualSliceAddr;
 					if(logicalSliceAddr == tempSliceAddr)
 					{

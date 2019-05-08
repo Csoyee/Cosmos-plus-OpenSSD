@@ -52,7 +52,7 @@ void dummyBufWriteCommand(unsigned int logicalSliceAddr)
 {
 	unsigned int dataBufEntry;
 	int * checker;
-	xil_printf("dummyBufWriteCommand\r\n");
+	//xil_printf("dummyBufWriteCommand\r\n");
 	dataBufEntry = AllocateDataBuf();
 	dummyEvictCommand(dataBufEntry);
 	dataBufMapPtr->dataBuf[dataBufEntry].logicalSliceAddr = logicalSliceAddr;
@@ -140,7 +140,6 @@ void FlushDataBuffer()
 	unsigned int reqSlotTag, bufEntry, virtualSliceAddr;
 	int index;
 
-	xil_printf("flush data buffer entry \r\n");
 
 	for(index = 0 ; index < AVAILABLE_DATA_BUFFER_ENTRY_COUNT ; index ++)
 	{
@@ -208,12 +207,12 @@ void checkShareList(unsigned int logicalSliceAddr)
 		inbyte();
 	}
 
-	xil_printf("\r\nVSN: %d\r\n", virtualSliceAddr);
+	xil_printf("\r\nVSN: %d(%d)\r\n", virtualSliceAddr, Vsa2VdieTranslation(virtualSliceAddr));
 }
 
 void testCode()
 {
-	int i;
+	int i, j;
 	xil_printf("test Code\r\n");
 	// 1. write dummy data
 	for (i=1 ; i<11 ; i++)
@@ -221,7 +220,8 @@ void testCode()
 		dummyBufWriteCommand(i);
 	}
 
-	// 2. check buffered data share works well
+	/*
+	// 2. check data share works well
 	dummyShareCommand(8, 13);  // in buffer and is dirty
 	dummyShareCommand(13, 15); // not in buffer
 	dummyShareCommand(8, 14);  // in buffer and is clean
@@ -241,9 +241,28 @@ void testCode()
 	dummyShareCommand(13, 2);
 
 	checkShareList(16);
+	 */
 
-/*	for (i=1 ; i<11 ; i++)
+/*	for(j=128; j< 161; j++)
+		dummyBufWriteCommand(j);
+
+	// 3. copyback test
+	for (i=1 ; i<100 ; i++)
 	{
+		for (j=0; j<64 ; j++)
+			dummyBufWriteCommand(j);
+	}
+
+	for (i=0 ; i<64 ; i++)
 		checkShareList(i);
-	}*/
+
+	for(j=128; j< 161; j++)
+		checkShareList(j);
+
+	dummyShareCommand(131, 200);
+
+	GarbageCollection(13);
+
+	checkShareList(131);
+	checkShareList(200);*/
 }

@@ -825,6 +825,7 @@ void InvalidateOldVsa(unsigned int logicalSliceAddr)
 			SelectiveGetFromGcVictimList(dieNo, blockNo);
 			virtualBlockMapPtr->block[dieNo][blockNo].invalidSliceCnt++;
 			logicalSliceMapPtr->logicalSlice[logicalSliceAddr].virtualSliceAddr = VSA_NONE;
+			virtualSliceMapPtr->virtualSlice[virtualSliceAddr].logicalSliceAddr = LSA_NONE;
 
 			PutToGcVictimList(dieNo, blockNo, virtualBlockMapPtr->block[dieNo][blockNo].invalidSliceCnt);
 		}
