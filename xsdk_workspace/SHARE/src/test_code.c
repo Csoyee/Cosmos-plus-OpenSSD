@@ -200,7 +200,7 @@ void checkShareList(unsigned int logicalSliceAddr)
 	}
 
 	tempSliceAddr = getAddress(virtualSliceMapPtr->virtualSlice[virtualSliceAddr].logicalSliceAddr);
-	xil_printf("LSN: %d  ", tempSliceAddr);
+	xil_printf("LSN: %d(%d) ", tempSliceAddr, getShareBit(virtualSliceMapPtr->virtualSlice[virtualSliceAddr].logicalSliceAddr));
 	while (getShareBit(logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr))
 	{
 		tempSliceAddr = getAddress(logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr);

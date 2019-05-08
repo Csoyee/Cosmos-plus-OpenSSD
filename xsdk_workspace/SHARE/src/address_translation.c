@@ -627,7 +627,6 @@ unsigned int AddrTransRead(unsigned int logicalSliceAddr)
 
 	if(logicalSliceAddr < SLICES_PER_SSD)
 	{
-		// FIXME, share bit check
 		tempSliceAddr = logicalSliceAddr;
 		while (getShareBit(logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr))
 			tempSliceAddr = getAddress(logicalSliceMapPtr->logicalSlice[tempSliceAddr].virtualSliceAddr);
@@ -799,7 +798,8 @@ void InvalidateOldVsa(unsigned int logicalSliceAddr)
 			sharedCount--;
 			if(sharedCount == 1) {
 				if(getShareBit(prevSliceAddr)){
-					logicalSliceMapPtr->logicalSlice[getAddress(prevSliceAddr)].virtualSliceAddr = getAddress(logicalSliceMapPtr->logicalSlice[logicalSliceAddr].virtualSliceAddr);
+					logicalSliceMapPtr->logicalSlice[getAddress(prevSliceAddr)].virtualSliceAddr = logicalSliceMapPtr->logicalSlice[logicalSliceAddr].virtualSliceAddr;
+					virtualSliceMapPtr->virtualSlice[logicalSliceMapPtr->logicalSlice[logicalSliceAddr].virtualSliceAddr].logicalSliceAddr = getAddress(prevSliceAddr);
 				} else {
 					virtualSliceMapPtr->virtualSlice[prevSliceAddr].logicalSliceAddr = getAddress(logicalSliceMapPtr->logicalSlice[logicalSliceAddr].virtualSliceAddr);
 				}
