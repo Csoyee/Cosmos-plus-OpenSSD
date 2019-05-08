@@ -23,7 +23,7 @@ void dummyWriteCommand()
 	int *checker;
 
 
-	xil_printf("dummyWrite Command\r\n");
+	xil_printf("dummy Write Command\r\n");
 
 	// dummy lsn:
 	dataBufEntry = AllocateDataBuf();
@@ -129,8 +129,9 @@ void FlushDataBuffer()
 
 				dataBufMapPtr->dataBuf[bufEntry].dirty = DATA_BUF_CLEAN;
 
-				bufEntry = dataBufMapPtr->dataBuf[bufEntry].hashNextEntry;
 			}
+
+			bufEntry = dataBufMapPtr->dataBuf[bufEntry].hashNextEntry;
 		}
 	}
 
