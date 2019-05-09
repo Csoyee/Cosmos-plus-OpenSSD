@@ -141,9 +141,7 @@ void ReqTransNvmeToSlice(unsigned int cmdSlotTag, unsigned int startLba, unsigne
 		reqPoolPtr->reqPool[reqSlotTag].nvmeDmaInfo.nvmeBlockOffset = nvmeBlockOffset;
 		reqPoolPtr->reqPool[reqSlotTag].nvmeDmaInfo.numOfNvmeBlock = tempNumOfNvmeBlock;
 		if(cmdCode == IO_NVM_SHARE)
-		{
-			reqPoolPtr->reqPool[reqSlotTag].sourceSliceAddr = tempLsa2;
-		} // SY add
+			reqPoolPtr->reqPool[reqSlotTag].sourceSliceAddr = tempLsa2;  // SY add
 
 		PutToSliceReqQ(reqSlotTag);
 
@@ -170,9 +168,7 @@ void ReqTransNvmeToSlice(unsigned int cmdSlotTag, unsigned int startLba, unsigne
 	reqPoolPtr->reqPool[reqSlotTag].nvmeDmaInfo.nvmeBlockOffset = nvmeBlockOffset;
 	reqPoolPtr->reqPool[reqSlotTag].nvmeDmaInfo.numOfNvmeBlock = tempNumOfNvmeBlock;
 	if(cmdCode == IO_NVM_SHARE)
-	{
-		reqPoolPtr->reqPool[reqSlotTag].sourceSliceAddr = tempLsa2;
-	} // SY add
+		reqPoolPtr->reqPool[reqSlotTag].sourceSliceAddr = tempLsa2; // SY add
 
 	PutToSliceReqQ(reqSlotTag);
 }
@@ -322,16 +318,11 @@ void ReqTransSliceToLowLevel()
 			{
 				shareData(reqSlotTag);
 			}
-			// NOTE: low level request queue 로 share request 내려야 하는지?
-			// TODO: completion 은 어떻게 보내주면 되는지?
 
 			reqPoolPtr->reqPool[reqSlotTag].reqQueueType = REQ_QUEUE_TYPE_NONE;
-
 			PutToFreeReqQ(reqSlotTag);
 
 			continue;
-
-			// TODO: move reqSlotTag to free request Queue
 		}
 
 		//allocate a data buffer entry for this request

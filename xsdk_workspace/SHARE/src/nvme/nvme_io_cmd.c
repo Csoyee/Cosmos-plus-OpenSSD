@@ -151,7 +151,7 @@ void handle_nvme_io_cmd(NVME_COMMAND *nvmeCmd)
 	nvmeIOCmd = (NVME_IO_COMMAND*)nvmeCmd->cmdDword;
 	opc = (unsigned int)nvmeIOCmd->OPC;
 
-	switch(opc) // TODO : SHARE command 처리하는 로직 추가
+	switch(opc)
 	{
 		case IO_NVM_FLUSH:
 		{
@@ -177,6 +177,11 @@ void handle_nvme_io_cmd(NVME_COMMAND *nvmeCmd)
 		{
 			//xil_printf("IO SHARE Command\r\n");
 			handle_nvme_io_share(nvmeCmd->cmdSlotTag,nvmeIOCmd);
+
+			// FIXME completion, is it correct?
+			nvmeCPL.dword[0] = 0;
+			nvmeCPL.specific = 0x0;
+			set_auto_nvme_cpl(nvmeCmd->cmdSlotTag, nvmeCPL.specific, nvmeCPL.statusFieldWord);
 			break;
 		}
 		default:
